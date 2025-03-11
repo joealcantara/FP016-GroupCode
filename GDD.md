@@ -11,7 +11,7 @@ glory quest
 or
 ...
 
-Majesty
+Majesty,
 King of realms
 
 
