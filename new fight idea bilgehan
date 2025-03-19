@@ -1,0 +1,153 @@
+ **Card-Based Battle System**  
+
+#*1. General Rules**  
+- Players have a specific deck of cards.  
+- Each turn, they hold **5 cards in hand**.  
+- Cards are drawn randomly, and **one card can be played per turn**.  
+- The battle is **turn-based**, with both sides (player & enemy) playing cards in turns.  
+
+---  
+
+#2. Card Types**  
+
+   **Attack Cards**  
+- **Light Attack:** Deals small damage but can be played quickly.  
+- **Heavy Attack:** Deals high damage but causes a delay in the next turn.  
+- **Interrupt Attack:** Cancels the enemy's spell if they are casting one.  
+
+   **Defense Cards**  
+- **Block:** Completely stops an incoming attack.  
+- **Deflection:** Reduces incoming damage by **50%** and reflects the rest back to the enemy.  
+- **Endurance:** Reduces the damage taken for the next **2 turns**.  
+
+   **Magic Cards**  
+- **Fireball:** Burns the enemy, causing extra damage over multiple turns.  
+- **Ice Shield:** Reduces incoming damage by **50% for 2 turns**.  
+- **Poison:** Deals low but continuous damage to the enemy for **3 turns**.  
+
+   **Special Cards**  
+- **Draw Cards:** Allows the player to **draw 2 new cards**.  
+- **Energy Surge:** Enables the player to **play 2 cards in the same turn**.  
+- **Tactical Move:** Lets the player **see one card in the enemy’s hand**.  
+
+   **Hybrid Cards (Can Attack or Defend!)
+Some cards have two different effects, and the player can choose one when played.
+Examples:
+
+-Balanced Strike: Deals 15 damage or reduces incoming damage by 5 for 2 turns.
+-Mana Barrier: Blocks magic attacks or grants +1 energy when played.
+
+   **Passive Cards (Grant Permanent Effects!)
+These cards stay active for the rest of the battle and provide continuous bonuses.
+Examples:
+
+-Blood Sword: Restores 20% of damage dealt as health.
+-Armor Mastery: Reduces all incoming physical damage by 10%.
+-Magic Flow: Reduces the energy cost of all magic cards by 1.
+
+----------------------------------------------------------------------------------
+
+#3. Battle Flow**  
+1. **Each turn, players have 5 cards in hand.**  
+2. The player plays a card, then the enemy plays a card.  
+3. If two cards interact:  
+   - **Defense cards reduce or block incoming attacks.**  
+   - **Interrupt attacks cancel enemy spells.**  
+   - **Special effects are applied immediately.**  
+4. **A new card is drawn after each turn**, keeping the hand at 5 cards.  
+5. **The battle is won when the enemy’s HP reaches zero.**  
+
+---  
+
+# 4. Strategic Mechanics**  
+-Card Management:** The strongest cards may be limited in number, requiring careful usage.  
+- **Combos:** Some cards can be combined for unique effects.  
+  - *(Example: "Ice Shield" + "Endurance" = A turn with no damage taken.)*  
+- **Limited Resources:** Some powerful cards require energy and **cannot be used frequently**.  
+
+#5. Card Hold System (Save Cards for Later!)
+Players can skip playing a card in one turn to play 2 cards next turn.
+This allows for stronger combos and tactical plays.
+
+# 6 Overdrive System (Charge Up for a Powerful Move!)
+The Overdrive bar fills up as the player attacks.
+At 100% Overdrive, the player draws a special card that can be played for free!
+Example Overdrive Cards:
+“Blade Storm”: Deals 40 damage to 3 enemies.
+“Inevitable Death”: Instantly defeats an enemy if they are below 30% HP.
+-----------------------------------------------------------------------------------------------
+
+**Status Effects & Condition Mechanics**
+
+🔥 Burning
+Deals 5 damage per turn.
+Can be removed with an ice spell.
+🧊 Frozen
+Prevents the player from attacking for 1 turn.
+Can be removed with a fire spell.
+💀 Poisoned
+Deals increasing damage over 3 turns (5 → 10 → 15).
+Requires an antidote card to cure.
+🛡️ Fortified
+Reduces incoming damage by 50% for 2 turns.
+👁️ Blinded
+Attacks have a 50% chance to miss.
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+1. Player and Enemy Stats
+
+Stat	              Player	                                                  Enemy (Boss)
+
+Health              (HP) 100	                                                150-300 (Depends on the boss)
+
+Energy              (stamina)	3 (regenerates each turn)   	                      3-5 (Depends on the boss)
+
+Attack Power	      Depends on the cards	                                    Depends on the cards
+
+Defense	            Depends on the cards	                                    Depends on the cards
+------------------------------------------------------------------------------------------------------
+
+2. Card Damage Values
+
+-Attack Cards
+Card	Damage	   Energy        Cost	         Special Effect
+Light Attack	    10	          1	             Allows playing an extra card in the same turn.
+
+Heavy Attack	    25	          2	             You cannot defend on the next turn.
+
+Interrupt Attack	15	          2	             Cancels the enemy’s spell if they are casting one.
+
+Critical Strike	  30	          3	             50% chance to deal an extra 10 damage.
+--------------------------------------------------------------------------------------------------------
+-Defense Cards
+
+Card	          Blocked Damage	      Energy Cost	         Special Effect
+
+Block	             20	                  1	                   Completely negates incoming damage.
+
+Deflection	       15	                  2	                   Reflects 50% of the damage back to the enemy.
+
+Endurance	        10 (per turn)	        2                    Reduces damage taken for 2 turns.
+
+-------------------------------------------------------------------------------------------------------
+-Magic Cards
+
+Card	         Damage	          Energy Cost	Special Effect
+
+Fireball	       20	           2	Burns the enemy for 2 turns, dealing 5 extra damage per turn.
+
+Ice Shield	     -		         2 Reduces incoming damage by 50% for 2 turns.
+
+Poison	         15	           1	Poisons the enemy, dealing 5 damage per turn for 3 turns.
+
+3. Battle Mechanics and Stat Balance
+
+The player gains 3 energy per turn.
+Cards consume energy when played.
+A new card is drawn each turn.
+Bosses have between 150-300 HP and possess powerful abilities.
+The player wins the battle when the enemy’s HP reaches zero.
