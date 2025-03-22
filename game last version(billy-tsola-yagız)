@@ -20,11 +20,11 @@
 
     Card Name	          Element	       Damage	       Energy (AP)	               Special Effect
 
-    Flame Sword	          Fire	         15	           2	                         Burns the opponent for 2 turns (deals +5 damage per turn).
+    Flame Sword	             Fire	         15	           2	                         Burns the opponent for 2 turns (deals +5 damage per turn).
     Ice Spear	             Ice	         10	           1	                         Prevents the opponent from attacking next turn.
     Lightning Strike    	Electric	     20	           2	                         50% chance to stun the opponent for 1 turn (cannot play cards).
-    Poison Arrow	        Poison	       12	           1	                         Poisons the opponent for 3 turns (5 → 10 → 15 damage).
-    Stone Storm	          Earth	         18	           2	                         Reduces the opponent's defense by 30% for 1 turn.
+    Poison Arrow	         Poison	         12	           1	                         Poisons the opponent for 3 turns (5 → 10 → 15 damage).
+    Stone Storm	             Earth	         18	           2	                         Reduces the opponent's defense by 30% for 1 turn.
 
 
 🛡️ Defense Cards
