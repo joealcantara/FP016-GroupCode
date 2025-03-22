@@ -16,13 +16,13 @@
 🔥 Elemental Attack Cards
  -These cards deal damage to the opponent using the power of different elements. Each element has its unique effect.
 
-    Card Name	          Element	       Damage	     Energy (AP)	               Special Effect
+    Card Name	          Element	          Damage	     Energy (AP)	               Special Effect
 
-    Flame Sword	             Fire	         15	           2	                         Burns the opponent for 2 turns (deals +5 damage per turn).
-    Ice Spear	             Ice	         10	           1	                         Prevents the opponent from attacking next turn.
-    Lightning Strike    	Electric	     20	           2	                         50% chance to stun the opponent for 1 turn (cannot play cards).
-    Poison Arrow	         Poison	         12	           1	                         Poisons the opponent for 3 turns (5 → 10 → 15 damage).
-    Stone Storm	             Earth	         18	           2	                         Reduces the opponent's defense by 30% for 1 turn.
+    Flame Sword	          Fire	            15	            2	                         Burns the opponent for 2 turns (deals +5 damage per turn).
+    Ice Spear	             Ice	            10	            1	                         Prevents the opponent from attacking next turn.
+    Lightning Strike    	Electric	         20	            2	                         50% chance to stun the opponent for 1 turn (cannot play cards).
+    Poison Arrow	         Poison	         12	            1	                         Poisons the opponent for 3 turns (5 → 10 → 15 damage).
+    Stone Storm	          Earth	         18	            2	                         Reduces the opponent's defense by 30% for 1 turn.
 
 
 🛡️ Defense Cards
@@ -30,43 +30,43 @@
 
     Card Name	          Blocked Damage	      Energy (AP)	                        Special Effect
 
-    Fire Shield	              20	                   2	                              Completely blocks fire attacks.
-    Ice Wall	              15                       1	                              Blocks ice attacks and slows the opponent for 1 turn.
-    Lightning Reflect	      10	                   1	                              Reflects 50% of electric damage back to the opponent.
-    Poison Cleanse	          -	                       1	                              Clears poison effects and heals 5 HP.
-    Stone Armor	              25	                   3	                              Reduces incoming damage by 50% for 2 turns.
+    Fire Shield	             20	                   2	                              Completely blocks fire attacks.
+    Ice Wall	                15                      1	                              Blocks ice attacks and slows the opponent for 1 turn.
+    Lightning Reflect	       10	                   1	                              Reflects 50% of electric damage back to the opponent.
+    Poison Cleanse	           -	                   1	                              Clears poison effects and heals 5 HP.
+    Stone Armor	             25	                   3	                              Reduces incoming damage by 50% for 2 turns.
 
 
 ✨ Spell Cards
 -These cards provide special effects and combinations.
 
-    Card Name	                                     Energy (AP)	                    Special Effect
+    Card Name	                                    Energy (AP)	                    Special Effect
 
-    Element Fusion	                                   3	                              Combines 2 elemental cards in your hand to create a powerful hybrid card.
+    Element Fusion	                                 3	                              Combines 2 elemental cards in your hand to create a powerful hybrid card.
     Mana Burst	                                       2	                              Gain 2 extra AP this turn.
     Time Warp	                                       3	                              Skip the opponent's turn and repeat your turn.
-    Summon Element                                     2	                              Draw a random elemental card.
-    Dispel Magic	                                   1	                              Cancels the opponent's last played spell.
+    Summon Element                                    2	                              Draw a random elemental card.
+    Dispel Magic	                                    1	                              Cancels the opponent's last played spell.
     🔄 Passive Cards
                                                   These cards provide continuous effects throughout the battle.
 
     Card Name	                                    Energy (AP)	                        Special Effect
 
-    Fire Mastery	                                      2	                               Increases fire attack damage by 20%.
-    Ice Protection	                                      2	                               Reduces damage from ice attacks by 30%.
-    Lightning Speed	                                      2	                               Increases the priority of electric attacks (strike first).
-    Poison Immunity	                                      2	                               Grants immunity to poison effects.
-    Stone Resilience	                                  2	                               Reduces physical damage taken by 20%.
+    Fire Mastery	                                       2	                               Increases fire attack damage by 20%.
+    Ice Protection	                                    2	                               Reduces damage from ice attacks by 30%.
+    Lightning Speed	                                    2	                               Increases the priority of electric attacks (strike first).
+    Poison Immunity	                                    2	                               Grants immunity to poison effects.
+    Stone Resilience	                                    2	                               Reduces physical damage taken by 20%.
     🎭 Special Cards
                                                   These cards have powerful effects that can change the course of the game.
 
     Card Name	                                       Energy (AP)	                      Special Effect
 
-    Element Explosion	                                    4	                            Deals 30 damage to all opponents.
-    Rebirth	                                                3	                            Restores HP to 50 and clears all negative effects.
+    Element Explosion	                                  4	                            Deals 30 damage to all opponents.
+    Rebirth	                                              3	                            Restores HP to 50 and clears all negative effects.
     Wheel of Fate	                                        2	                            Play a random card for free.
     Spell Reflect	                                        3	                            Reflects the opponent's spell back at them.
-    Final Blow	                                            7	                            Instantly kills the opponent if their HP is below 25%.
+    Final Blow	                                           7	                            Instantly kills the opponent if their HP is below 25%.
 
 
 *************************************************************************************New Strategic Mechanics**************************************************************************
@@ -80,9 +80,10 @@
             Earth + Fire = Lava Flow: Deals 30 damage and reduces the opponent's defense by 50% for 1 turn.
 
     ⏳ Turn Memory (Card Holding)
-    You can hold a card and play 2 cards in the next turn. This is useful for setting up powerful combos.
+    -You can hold a card and play 2 cards in the next turn. This is useful for setting up powerful combos.
 
     🌀 Status Effects
+
             Burning: Deals 5 damage per turn.
 
             Frozen: Prevents attacking for 1 turn.
@@ -92,7 +93,9 @@
             Blinded: Attacks have a 50% chance to miss.
 
     🌟 Overdrive System
-    Attacking fills the Overdrive bar. When it reaches 100%, you can draw a special Overdrive card. Example Overdrive cards:
+   -Attacking fills the Overdrive bar. When it reaches 100%, you can draw a special Overdrive card. 
+
+    Example Overdrive cards:
 
             Element Storm: Deals 40 damage to all opponents.
 
@@ -101,7 +104,9 @@
     *****************************************************************************Opponent AI and Boss Mechanics*******************************************************************************************
     Smart Opponents: Opponents react to the cards you play. For example, they may use ice defense when you play a fire card.
 
-    -Boss Abilities: Bosses have unique abilities. For example:
+    -Boss Abilities: Bosses have unique abilities. 
+
+     For example:
 
             Dragon Boss: 50% resistance to fire attacks.
 
@@ -113,9 +118,9 @@
 
 Example upgrades:
 
-    Flame Sword +1: Damage increases from 15 → 20.
+    Flame Sword +1: Damage increases from 15 → 22.
 
-    Ice Wall +1: Blocked damage increases from 15 → 20.
+    Ice Wall +1: Blocked damage increases from 15 → 22.
 
     Lightning Strike +1: Stun chance increases from 50% → 75%.
 
