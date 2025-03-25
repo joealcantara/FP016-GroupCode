@@ -1,0 +1,20 @@
+Define Opponent Card Pool Create a predefined card pool for each opponent or boss (based on theme, strategy, or difficulty).
+Shuffle & Draw At the start of each turn, draw cards randomly from this pool (similar to how the player draws from their deck).
+Play Logic (AI) The AI then selects cards from its hand based on simple logic (e.g., AP available, priority effects, countering player's last move, etc.).
+
+* Opponent starts each battle with a set amount of Stamina Points (SP). Each card played by the opponent reduces stamina by a certain amount (based on energy cost or card type). For instance:
+    * Low-cost card (1 AP) → drains 5 SP
+    * Mid-cost (2 AP) → drains 10 SP
+    * High-cost (3+ AP) → drains 15–20 SP
+* Attack Power Scaling: As stamina decreases, damage dealt is reduced proportionally.
+
+Card Use + Stamina Cost Example
+Turn Example:
+* Medusa plays "Poison Arrow" (12 base damage, 1 AP)
+* Current Stamina: 60 → Cost: 5 SP → New Stamina: 55 → Scaled Damage: ~10
+
+Design Benefits
+* Pacing Mechanic: Bosses hit hard early, then lose steam.
+* Counterplay Opportunity: Players can focus on surviving until stamina is low.
+* Encourages AP-efficient decks for the opponent to stay dangerous longer
+
