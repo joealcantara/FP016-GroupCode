@@ -22,6 +22,30 @@ Phase 3: The Medusa’s Lair
 •	Medusa’s Eye (can temporarily petrify enemies).
 •	Stonebreaker Sword (strong against stone enemies).
 
+Special Attacks
+1. Gaze of Ruin
+    * Description: Medusa locks eyes with her target. If the player is in her line of sight, they begin to petrify over 3 turns.
+    * Effect: Gradual immobilization unless blocked by a shield, blindfold, or cover.
+    * Counter: Use polished shield to reflect, or avoid direct line of sight.
+2.  Serpent Flurry
+    * Description: Her snake hair lashes out wildly.
+    * Effect: Area-of-effect melee damage + poison over time.
+    * Radius: 1-tile (or close range)
+    * Cooldown: 2 turns
+
+ Strengths
+* Petrification Gaze: Can quickly disable reckless players.
+* Poison Attacks: Wears down enemies over time.
+* Stone Camouflage: Blends in among statues, making it harder to detect her until it’s too late.
+* High Magic Resistance: Spells have reduced effect unless they’re light-based.
+
+ Weaknesses
+* Reflective Surfaces: Her own gaze can be turned against her with a polished shield.
+* Blind Tactics: Players using blindfold relics can avoid gaze effects entirely.
+* Light-Based Attacks: Bright light or sun magic disrupts her powers and slows her movement.
+* Sound Distraction: Loud noises (like tossed objects or clashing metal) can temporarily misdirect her attention.
+
+
 ⸻
 
 Phase 4: The Minotaur’s Maze
