@@ -65,6 +65,26 @@ Phase 4: The Minotaur’s Maze
 •	Key to the Inner Kingdom Gate (needed for the next phase).
 
 Health Points (HP): 300
+ Special Attacks
+1. Maze Charge
+    * Description: The Minotaur locks onto the player and charges in a straight line.
+    * Effect: Deals massive damage if it connects. If the player dodges at the last moment, the Minotaur crashes into a wall and becomes stunned for 2 turns.
+    * Cooldown: 3 turns
+2.  Earthshatter Slam
+    * Description: The Minotaur slams his axe or fists into the ground.
+    * Effect: Sends a shockwave in a cone, knocking the player back and causing temporary disorientation (reduced movement or blurred vision).
+    * Range: Mid-range (3–4 tiles ahead)
+    * Cooldown: 4 turns
+
+Strengths
+* Brute Force: High damage and strong melee resistance.
+* Sound Tracking: Can locate the player based on noise, even without direct line of sight.
+* Labyrinth Awareness: Knows hidden shortcuts and can ambush if the player backtracks or hesitates.
+
+ Weaknesses
+* Slow Recovery: Easily stunned when missing with charge attacks.
+* Fire Aversion: Torches or fire-based attacks cause him to back off or become temporarily distracted.
+* Petrification Vulnerability: Can be frozen briefly by Medusa’s Eye, bypassing his natural tankiness.
 
 ⸻
 
