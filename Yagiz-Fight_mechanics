@@ -1,0 +1,12 @@
+A shuffeled card mechanics required. Because of it, Boss can have 2 stage fight mechanic.
+Example -> 
+
+Boss Deck: 
+Stage 1(attack phase):
+Cards for attacks, debuffs (e.g., attack to the player), and special enemy abilities.
+Stage 2(defense phase):
+Cards for defense, protect it's helath and avoid attacks made by player.
+
+Player's Deck: 
+Cards representing attacks, defenses, special abilities (e.g., healing, buffs).
+Player decides what to do. Player can attack or make defense.
