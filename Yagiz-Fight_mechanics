@@ -10,3 +10,7 @@ Cards for defense, protect it's helath and avoid attacks made by player.
 Player's Deck: 
 Cards representing attacks, defenses, special abilities (e.g., healing, buffs).
 Player decides what to do. Player can attack or make defense.
+
+
+Base Attack Damage: Each monster begins the fight with a fixed attack damage value (e.g., 50 for Mug Monster, 70 for Mad Scientist).
+By making phase attacks, monster will be able to fight with shuffled cards and also don't need to choose what to play. The first phase will be about attack, and the second phase will be about defending.
