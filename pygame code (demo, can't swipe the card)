@@ -1,174 +1,211 @@
 import pygame
+import random
 import sys
-from random import choice
 
 pygame.init()
 
+
 SCREEN_WIDTH = 600
 SCREEN_HEIGHT = 400
-CARD_WIDTH = 400
-CARD_HEIGHT = 200
-CARD_COLOR = (255, 255, 255)
-CARD_OUTLINE_COLOR = (0, 0, 0)
-BACKGROUND_COLOR = (173, 216, 230)  # Light blue
-FONT_COLOR = (0, 0, 0)
-WARNING_COLOR = (255, 0, 0)
-YES_COLOR = (0, 255, 0)
-NO_COLOR = (255, 0, 0)
-FONT_SIZE = 14
-RESOURCE_FONT_SIZE = 12
-CARD_FONT_SIZE = 14
-
-resources = {
-    "Military": 5,
-    "Religion": 5,
-    "Economy": 5,
-    "People": 5
-}
-
-deck = [
-    {"description": "Raise taxes to fund the military.",
-     "effects": {"Military": +2, "Economy": -1, "People": -2}},
-    {"description": "Build a grand temple to please the gods.",
-     "effects": {"Religion": +3, "Economy": -2}},
-    {"description": "Send aid to the poor.",
-     "effects": {"People": +2, "Economy": -1}},
-    {"description": "Declare war on a neighboring kingdom.",
-     "effects": {"Military": -1, "People": -1, "Economy": -2}},
-    {"description": "Hold a festival to boost morale.",
-     "effects": {"People": +3, "Economy": -1}}
-]
-
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Game")
+pygame.display.set_caption("Reigns-like Game")
 
-font = pygame.font.Font(None, FONT_SIZE)
-resource_font = pygame.font.Font(None, RESOURCE_FONT_SIZE)
-card_font = pygame.font.Font(None, CARD_FONT_SIZE)
+LIGHT_BLUE = (173, 216, 230)
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+GRAY = (200, 200, 200)
+CARD_COLOR = (250, 250, 240)
 
-current_card = None
-card = None
-card_text = None
-start_x = None
-dragging = False
+font_small = pygame.font.SysFont("Arial", 12)
+font_medium = pygame.font.SysFont("Arial", 14)
+font_large = pygame.font.SysFont("Arial", 16)
+font_xlarge = pygame.font.SysFont("Arial", 24)
 
-def draw_card():
-    global current_card, card, card_text
-    if deck:
-        current_card = choice(deck)
-        card = pygame.Rect(100, 100, CARD_WIDTH, CARD_HEIGHT)
-        card_text = current_card["description"]
-        print(f"Card drawn: {current_card['description']}")
-    else:
-        game_over("The deck is empty!")
-
-def update_resources():
-    warning_message = ""
-    for resource, value in resources.items():
-        if value <= 2:
-            warning_message += f"Warning: {resource} is too low! "
-        elif value >= 8:
-            warning_message += f"Warning: {resource} is too high! "
-    return warning_message
-
-def apply_effects(direction):
-    effects = current_card["effects"]
-    print(f"Applying effects for {direction} swipe: {effects}")
-    for resource, change in effects.items():
-        if direction == "left":
-            resources[resource] += change
-        elif direction == "right":
-            resources[resource] -= change
-
-    for resource, value in resources.items():
-        if value <= 0 or value >= 10:
-            game_over(f"{resource} reached an extreme level!")
-            return
-
-    deck.append(current_card)
-    print("Card added back to the deck")
-
-    draw_card()
-
-def game_over(message):
-    screen.fill(BACKGROUND_COLOR)
-    game_over_text = font.render(message, True, WARNING_COLOR)
-    screen.blit(game_over_text, (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2))
-    pygame.display.flip()
-    print("Game Over:", message)
-    pygame.time.wait(3000)
-    pygame.quit()
-    sys.exit()
-
-def draw_resources():
-    y = 10
-    for resource, value in resources.items():
-        resource_text = resource_font.render(f"{resource}: {value}", True, FONT_COLOR)
-        screen.blit(resource_text, (10, y))
-        y += 30
-
-def draw_warning(warning_message):
-    warning_text = font.render(warning_message, True, WARNING_COLOR)
-    screen.blit(warning_text, (SCREEN_WIDTH // 2 - 100, 10))
-
-def draw_yes_no():
-    no_label = font.render("No", True, NO_COLOR)
-    yes_label = font.render("Yes", True, YES_COLOR)
-    screen.blit(no_label, (50, 350))
-    screen.blit(yes_label, (500, 350))
-
-def draw_card_on_screen():
-    if card:
-        pygame.draw.rect(screen, CARD_COLOR, card)
-        pygame.draw.rect(screen, CARD_OUTLINE_COLOR, card, 2)
-        card_text_surface = card_font.render(card_text, True, FONT_COLOR)
-        text_rect = card_text_surface.get_rect(center=card.center)
-        screen.blit(card_text_surface, text_rect)
-
-def on_card_click(event):
-    global start_x, dragging
-    if card and card.collidepoint(event.pos):
-        start_x = event.pos[0]
-        dragging = True
-        print(f"Card clicked at x={event.pos[0]}")
-
-def on_card_release(event):
-    global dragging
-    if dragging and card:
-        card_x = card.x
-        if card_x > 300 + (CARD_WIDTH * 0.5):
-            apply_effects("left")
-        elif card_x < 300 - (CARD_WIDTH * 0.5):
-            apply_effects("right")
+class Game:
+    def __init__(self):
+        self.resources = {
+            "Military": 5,
+            "Religion": 5,
+            "Economy": 5,
+            "People": 5
+        }
+        
+        self.warning_message = ""
+        self.current_card = None
+        self.dragging = False
+        self.drag_offset = 0
+        self.card_pos = [100, 100]
+        self.card_size = [400, 200]  # width, height
+        
+        self.deck = [
+            {"description": "Raise taxes to fund the military.",
+             "effects": {"Military": +2, "Economy": -1, "People": -2}},
+            {"description": "Build a grand temple to please the gods.",
+             "effects": {"Religion": +3, "Economy": -2}},
+            {"description": "Send aid to the poor.",
+             "effects": {"People": +2, "Economy": -1}},
+            {"description": "Declare war on a neighboring kingdom.",
+             "effects": {"Military": -1, "People": -1, "Economy": -2}},
+            {"description": "Hold a festival to boost morale.",
+             "effects": {"People": +3, "Economy": -1}}
+        ]
+        
+        self.game_over = False
+        self.game_over_message = ""
+        
+        self.draw_card()
+    
+    def draw_card(self):
+        if self.deck:
+            self.current_card = random.choice(self.deck)
+            self.card_pos = [100, 100]  # Reset card position
+            print(f"Card drawn: {self.current_card['description']}")
         else:
-            card.x = 100
-        dragging = False
+            self.end_game("The deck is empty!")
+    
+    def update_resources(self):
+        print("Resources updated:", self.resources)
+        
+        self.warning_message = ""
+        for resource, value in self.resources.items():
+            if value <= 2:
+                self.warning_message += f"Warning: {resource} is too low! "
+            elif value >= 8:
+                self.warning_message += f"Warning: {resource} is too high! "
+    
+    def apply_effects(self, direction):
+        if not self.current_card:
+            return
+            
+        effects = self.current_card["effects"]
+        print(f"Applying effects for {direction} swipe: {effects}")
+        
+        for resource, change in effects.items():
+            if direction == "left":
+                self.resources[resource] += change
+            elif direction == "right":
+                self.resources[resource] -= change
+        
+        for resource, value in self.resources.items():
+            if value <= 0 or value >= 10:
+                self.end_game(f"{resource} reached an extreme level!")
+                return
+        
+        self.deck.append(self.current_card)
+        print("Card added back to the deck")
+        
+        self.draw_card()
+        self.update_resources()
+    
+    def end_game(self, message):
+        self.game_over = True
+        self.game_over_message = message
+        print("Game Over:", message)
+    
+    def handle_event(self, event):
+        if self.game_over:
+            return
+            
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:  # Left mouse button
+                mouse_x, mouse_y = event.pos
+                if (self.card_pos[0] <= mouse_x <= self.card_pos[0] + self.card_size[0] and
+                    self.card_pos[1] <= mouse_y <= self.card_pos[1] + self.card_size[1]):
+                    self.dragging = True
+                    self.drag_offset = mouse_x - self.card_pos[0]
+        
+        elif event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1 and self.dragging:
+                self.dragging = False
+                if self.card_pos[0] > 300 + (self.card_size[0] * 0.5):
+                    self.apply_effects("left")
+                elif self.card_pos[0] + self.card_size[0] < 300 - (self.card_size[0] * 0.5):
+                    self.apply_effects("right")
+                else:  # Not swiped far enough - reset position
+                    self.card_pos = [100, 100]
+                    print("Card reset to center")
+        
+        elif event.type == pygame.MOUSEMOTION and self.dragging:
+            mouse_x, mouse_y = event.pos
+            self.card_pos[0] = mouse_x - self.drag_offset
+    
+    def draw(self, screen):
+        screen.fill(LIGHT_BLUE)
+        
+        if self.game_over:
+            text = font_xlarge.render(self.game_over_message, True, RED)
+            text_rect = text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2))
+            screen.blit(text, text_rect)
+            return
+        
+        y = 10
+        for resource, value in self.resources.items():
+            text = font_small.render(f"{resource}: {value}", True, BLACK)
+            screen.blit(text, (10, y))
+            y += 30
+        
+        if self.warning_message:
+            text = font_medium.render(self.warning_message, True, RED)
+            text_rect = text.get_rect(center=(SCREEN_WIDTH//2, 20))
+            screen.blit(text, text_rect)
+        
+        pygame.draw.rect(screen, CARD_COLOR, 
+                         (self.card_pos[0], self.card_pos[1], 
+                          self.card_size[0], self.card_size[1]))
+        pygame.draw.rect(screen, BLACK, 
+                         (self.card_pos[0], self.card_pos[1], 
+                          self.card_size[0], self.card_size[1]), 2)
+        
+        if self.current_card:
+            words = self.current_card["description"].split(' ')
+            lines = []
+            current_line = []
+            max_width = self.card_size[0] - 40  # Padding
+            
+            for word in words:
+                test_line = ' '.join(current_line + [word])
+                test_width = font_medium.size(test_line)[0]
+                
+                if test_width <= max_width:
+                    current_line.append(word)
+                else:
+                    lines.append(' '.join(current_line))
+                    current_line = [word]
+            
+            if current_line:
+                lines.append(' '.join(current_line))
+            
+            y_offset = self.card_pos[1] + 20
+            for line in lines:
+                text = font_medium.render(line, True, BLACK)
+                text_rect = text.get_rect(center=(SCREEN_WIDTH//2, y_offset))
+                screen.blit(text, text_rect)
+                y_offset += 30
+
+        no_text = font_large.render("No", True, RED)
+        yes_text = font_large.render("Yes", True, GREEN)
+        screen.blit(no_text, (50, 350))
+        screen.blit(yes_text, (500, 350))
 
 def main():
-    global dragging
-    draw_card()
-    while True:
-        screen.fill(BACKGROUND_COLOR)
-        draw_resources()
-        draw_warning(update_resources())
-        draw_yes_no()
-        draw_card_on_screen()
-
+    clock = pygame.time.Clock()
+    game = Game()
+    
+    running = True
+    while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                on_card_click(event)
-            elif event.type == pygame.MOUSEBUTTONUP:
-                on_card_release(event)
-            elif event.type == pygame.MOUSEMOTION and dragging:
-                if card:
-                    dx = event.pos[0] - start_x
-                    card.x += dx
-                    start_x = event.pos[0]
-
+                running = False
+            game.handle_event(event)
+        
+        game.draw(screen)
         pygame.display.flip()
+        clock.tick(60)
+    
+    pygame.quit()
+    sys.exit()
 
 if __name__ == "__main__":
     main()
