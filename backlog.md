@@ -7,8 +7,8 @@
 4) weapon upgrade system and looting system (tsola)
 5) *Left/right choice triggers events (tsola)
 6) *Define card data structure (Bilgehan)
-7) *Load & display cards from a pool
-8) *UI/UX & Visual Design
+7) *Load & display cards from a pool (yagız)
+8) *UI/UX & Visual Design (yagız)
 
 
 
