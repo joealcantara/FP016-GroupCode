@@ -1,0 +1,72 @@
+import random
+import time
+
+class LootedGoods:
+    def __init__(self, name, restore_health=0):
+        self.name = name
+        self.restore_health = restore_health
+
+class AttackDealt:
+    def __init__(self, name, damage, stamina_cost):
+        self.name = name
+        self.damage = damage
+        self.stamina_cost = stamina_cost
+
+class player:
+    def __init__(self, name, is_player=False):
+        self.name = name
+        self.is_player = is_player
+        self.max_health = 300
+        self.health = 300
+        self.max_stamina = 50
+        self.stamina = 3
+        self.shield = 0
+        self.inventory_looted_goods = []
+
+    def __str__(self):
+        return f"{self.name} | HP: {self.health} | Stamina: {self.stamina} | Shield: {self.shield}"
+
+    def inflict_attack(self, attack, desired_target):
+        if self.stamina < attack.stamina_cost:
+            print(f"{self.name} stamina level is insufficent for selected attack {attack.name}!")
+            return
+
+        print(f"{self.name} uses {attack.name} on {desired_target.name}!")
+        self.stamina -= attack.stamina_cost
+        desired_target.inflicted_attack(attack.damage)
+
+    def inflicted_attack(self, damage):
+        self.stamina = max(self.stamina - damage * 0.25, 0)
+
+        if self.shield > 0:
+            absorbed_damage = min(self.shield, damage)
+            self.shield -= absorbed_damage
+            actual_damage = damage - absorbed_damage
+            print(f"{self.name}'s shield absorbed {absorbed_damage} damage.")
+        else:
+            actual_damage = damage
+
+        self.health = max(self.health - actual_damage, 0)
+        print(f"{self.name} took {actual_damage} damage!!")
+
+    def loot_goods(self, LootedGoods):
+        self.inventory_looted_goods.append(LootedGoods)
+        print(f"{self.name} looted {LootedGoods.name}.")
+
+    def consume_looted_goods(self, looted_goods_name):
+        for goods in self.inventory_looted_goods:
+            if looted_goods_name.name == looted_goods_name:
+                self.health = min(self.max_health, self.health + looted_goods_name.health_restore)
+                self.inventory_looted_goods.remove(looted_goods_name)
+                print(f"{self.name} consumed {looted_goods_name.name} (+{looted_goods_name.health_restore} health).")
+                return
+        print(f"{self.name} has no {looted_goods_name}.")
+
+    def increase_shield(self, amount):
+        self.shield += amount
+        print(f"{self.name} icreased shield by {amount}.")
+
+    def defeat_enemy(self, enemy):
+        print(f"{self.name} defeated {enemy.name}!")
+        self.increase_shield(0)
+        #sheild should increase only once looted item is aquired and in inventory_looted_goods
