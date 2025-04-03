@@ -1,31 +1,36 @@
 import random
 import time
 
+# Class representing a looted goods that can restore health
 class LootedGoods:
     def __init__(self, name, restore_health=0):
         self.name = name
         self.restore_health = restore_health
 
+# Class representing user attack: that consits of a name, damage dealt, and stamina cost
 class AttackDealt:
     def __init__(self, name, damage, stamina_cost):
         self.name = name
         self.damage = damage
         self.stamina_cost = stamina_cost
 
-class player:
+# Class representing either Player or enemy character
+class Player:
     def __init__(self, name, is_player=False):
         self.name = name
         self.is_player = is_player
         self.max_health = 300
         self.health = 300
-        self.max_stamina = 50
+        self.max_stamina = 3
         self.stamina = 3
         self.shield = 0
         self.inventory_looted_goods = []
 
+    # string that is used when printing the player object
     def __str__(self):
         return f"{self.name} | HP: {self.health} | Stamina: {self.stamina} | Shield: {self.shield}"
 
+    # defining how inflicted attacks would be dealt to a target
     def inflict_attack(self, attack, desired_target):
         if self.stamina < attack.stamina_cost:
             print(f"{self.name} stamina level is insufficent for selected attack {attack.name}!")
@@ -35,6 +40,7 @@ class player:
         self.stamina -= attack.stamina_cost
         desired_target.inflicted_attack(attack.damage)
 
+    # defining how to handle being attacked (damage taken and shield impact logic)
     def inflicted_attack(self, damage):
         self.stamina = max(self.stamina - damage * 0.25, 0)
 
@@ -49,10 +55,12 @@ class player:
         self.health = max(self.health - actual_damage, 0)
         print(f"{self.name} took {actual_damage} damage!!")
 
+    # Adding looted goods to player inventory
     def loot_goods(self, LootedGoods):
         self.inventory_looted_goods.append(LootedGoods)
         print(f"{self.name} looted {LootedGoods.name}.")
 
+    # defining how player will Consume looted good by name to restore health
     def consume_looted_goods(self, looted_goods_name):
         for goods in self.inventory_looted_goods:
             if looted_goods_name.name == looted_goods_name:
@@ -62,10 +70,12 @@ class player:
                 return
         print(f"{self.name} has no {looted_goods_name}.")
 
+    # defining how the Increase of player's shield works
     def increase_shield(self, amount):
         self.shield += amount
         print(f"{self.name} icreased shield by {amount}.")
 
+    # defining when enemy is defeated and player ca progress on
     def defeat_enemy(self, enemy):
         print(f"{self.name} defeated {enemy.name}!")
         self.increase_shield(0)
