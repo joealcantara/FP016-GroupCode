@@ -21,7 +21,7 @@ class Player:
         self.is_player = is_player
         self.max_health = 300
         self.health = 300
-        self.max_stamina = 3
+        self.max_stamina = 50
         self.stamina = 3
         self.shield = 0
         self.inventory_looted_goods = []
