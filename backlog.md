@@ -2,7 +2,7 @@
 
 ## Tasks to complete
 1) Fighting mechanics (I will try to do if I can #billy)
-2) Heath, stamina and Shield level and how they depreciate over time (tsola)
+
 3) Pathways and choices (Bilgehan)
 4) weapon upgrade system and looting system (tsola)
 5) *Left/right choice triggers events (tsola)
@@ -13,3 +13,4 @@
 
 
 ## Tasks completed
+2) Heath, stamina and Shield level and how they depreciate over time (tsola)
