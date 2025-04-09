@@ -1,0 +1,53 @@
+class Element(Elements):
+    FIRE = "Fire"
+    ICE = "Ice"
+    ELECTRIC = "Electric"
+    POISON = "Poison"
+    EARTH = "Earth"
+
+class CardType(Card):
+    ELEMENTAL_ATTACK = "Elemental Attack"
+    DEFENSE = "Defense"
+    SPELL = "Spell"
+    PASSIVE = "Passive"
+    SPECIAL = "Special"
+
+class ElementalAttackCard:
+    def __init__(
+        self,
+        name: str,
+        element: Element,
+        damage: int,
+        energy_cost: int,
+        special_effect: str,
+
+self.card_type = CardType.ELEMENTAL_ATTACK
+        self.name = name  
+        self.element = element 
+        self.damage = damage  
+        self.energy_cost = energy_cost
+
+class DefenseCard:
+    def __init__(
+        self,
+        name: str,
+        blocked_damage: int,
+        energy_cost: int,
+        special_effect: str,
+self.card_type = CardType.DEFENSE
+        self.name = name  
+        self.blocked_damage = blocked_damage 
+        self.energy_cost = energy_cost 
+        self.special_effect = special_effect 
+        self.blocks_element = blocks_element 
+
+class SpellCard:
+    def __init__(
+        self,
+        name: str,
+        energy_cost: int,
+        special_effect: str,
+
+        self.name = name 
+        self.energy_cost = energy_cost
+        self.special_effect = special_effect
