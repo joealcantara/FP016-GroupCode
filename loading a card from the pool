@@ -1,0 +1,33 @@
+
+              CHECK THE DEMO CODE FOR COMPLETE TEST OF THESE CODES.
+
+//Pool cards created://
+self.deck = [
+    {"description": "Raise taxes to fund the military.",
+     "effects": {"Military": +2, "Economy": -1, "People": -2}},
+    {"description": "Build a grand temple to please the gods.",
+     "effects": {"Religion": +3, "Economy": -2}},
+    {"description": "Send aid to the poor.",
+     "effects": {"People": +2, "Economy": -1}},
+    {"description": "Declare war on a neighboring kingdom.",
+     "effects": {"Military": -1, "People": -1, "Economy": -2}},
+    {"description": "Hold a festival to boost morale.",
+     "effects": {"People": +3, "Economy": -1}}
+]
+
+//Card Loading Method//
+def draw_card(self):
+    """Draw a random card from the deck."""
+    if self.deck:
+        self.current_card = random.choice(self.deck)
+        self.card_pos = [100, 100]  # Reset card position
+        print(f"Card drawn: {self.current_card['description']}")
+    else:
+        self.end_game("The deck is empty!")
+
+//Full Steps of Card Loading://
+1- Define pool → self.deck = [...]
+
+2- First card drawn → self.draw_card() inside __init__()
+
+2- New card drawn after each choice → self.draw_card() inside apply_effects()
