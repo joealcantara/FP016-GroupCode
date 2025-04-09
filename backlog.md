@@ -15,4 +15,4 @@
 ## Tasks completed
 2) Heath, stamina and Shield level and how they depreciate over time (tsola)
 
--) Load & display cards from a pool (yagiz) -> Check the demo code for a complete working test. I also uploaded the deck and the drawing card part separately from demo.
+-) Load & display cards from a pool (yagiz) -> Check the demo code for a complete working test. I also uploaded the "deck" and the "drawing card" part separately from demo.
