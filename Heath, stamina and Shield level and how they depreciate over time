@@ -80,3 +80,83 @@ class Player:
         print(f"{self.name} defeated {enemy.name}!")
         self.increase_shield(0)
         #sheild should increase only once looted item is aquired and in inventory_looted_goods
+import random  
+
+# Represents a weapon with upgradeable attributes
+class Weapon:
+    def __init__(self, name, base_level_damage):
+        self.name = name  
+        self.base_level_damage = base_level_damage  # Base damage of the weapon
+        self.attributes = []  
+
+    # Method to add a new attribute to the weapon if it doesn't already exist
+    def upgrade(self, attributes):
+        if attributes not in self.attributes:
+            self.attributes.append(attributes)
+            print(f"{self.name} has obtained the attribute: {attributes} from opponent.")
+
+    # String representation of the weapon for easy printing
+    def __str__(self):
+        attributes_list = ", ".join(self.attributes) if self.attributes else "None"
+        return f"Weapon: {self.name} | Damage: {self.base_level_damage} | attributes: {attributes_list}"
+
+# Represents a shield with strength and potential attributes
+class Shield:
+    def __init__(self, strength, base_level_damage=None):  # base_level_damage is not in use now
+        self.strength = strength 
+        self.attributes = []  
+
+    # Method to upgrade shield's strength or add new attributes
+    def upgrade(self, attributes):
+        if attributes == "strength":
+            self.strength += 10  
+            print("Shield strength increased by 10.")
+        elif attributes not in self.attributes:
+            self.attributes.append(attributes)
+            print(f"Shield obtained attribute: {attributes}.")
+
+    # String representation of the shield
+    def __str__(self):
+        attributes_list = ", ".join(self.attributes) if self.attributes else "None"
+        return f"Shield | Durability: {self.strength} | attributes: {attributes_list}"
+
+# Represents an enemy character with lootable attributes
+class Enemy:
+    def __init__(self, name, health, attributes=None):
+        self.name = name 
+        self.health = health  
+        self.attributes = attributes if attributes else []  
+
+    # String representation of the enemy
+    def __str__(self):
+        return f"Enemy: {self.name} | HP: {self.health} | attributes: {', '.join(self.attributes)}"
+
+# Player class with health, stamina, weapon, and shield
+class Player:
+    def __init__(self, name):
+        self.name = name  
+        self.max_health = 300 
+        self.health = 300  
+        self.max_stamina = 50  
+        self.stamina = 3  
+        self.shield = Shield(strength=20)  
+        self.weapon = Weapon("crimson double edge Sword", base_level_damage=20)  
+        self.inventory_looted_goods = [] 
+
+    # String representation of the player showing stats, weapon, and shield
+    def __str__(self):
+        return f"{self.name} | HP: {self.health} | Stamina: {self.stamina}\n{self.weapon}\n{self.shield}"
+
+    # Loots special attributes from an enemy and randomly applies them to either weapon or shield
+    def loot_enemy_attributes(self, enemy):
+        print(f"{self.name} acquired special attribute(s) from {enemy.name}")
+        for attributes in enemy.attributes:
+            if random.choice(["weapon", "shield"]) == "weapon":
+                self.weapon.upgrade(attributes) 
+            else:
+                self.shield.upgrade(attributes)  
+
+    # Simulates the player defeating an enemy and looting their attributes
+    def defeat_enemy(self, enemy):
+        print(f"{self.name} defeated {enemy.name}!")
+        self.loot_enemy_attributes(enemy)
