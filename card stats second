@@ -83,3 +83,72 @@ if drawn_card:
     print(f"Drawn Card: {drawn_card}")
 else:
     print("The deck is empty!")
+
+# defining how the Increase of player's shield works
+    def increase_shield(self, amount):
+        self.shield += amount
+        print(f"{self.name} icreased shield by {amount}.")
+
+    # defining when enemy is defeated and player ca progress on
+    def defeat_enemy(self, enemy):
+        print(f"{self.name} defeated {enemy.name}!")
+        self.increase_shield(0)
+        #sheild should increase only once looted item is aquired and in inventory_looted_goods
+
+
+def player_attack_boss_with_cards(player, boss, card_deck):
+   
+    if not card_deck:
+        print("Your elemental attack card deck is empty!")
+        return
+
+    while boss.health > 0 and player.health > 0:
+        print(f"\n--- {player.name}'s Turn to Attack {boss.name} ---")
+        print(player)
+        print(boss)
+        print("\nYour Elemental Attack Cards:")
+        for i, card in enumerate(card_deck):
+            print(f"{i+1}. {card}")
+
+        while True:
+            try:
+                card_choice = input("Choose a card to attack (enter number) or 'skip': ").strip().lower()
+                if card_choice == 'skip':
+                    print(f"{player.name} skips their turn.")
+                    return
+                choice_index = int(card_choice) - 1
+                if 0 <= choice_index < len(card_deck):
+                    selected_card = card_deck.pop(choice_index) # Draw the card from the deck
+                    break
+                else:
+                    print("Invalid card number. Please try again.")
+            except ValueError:
+                print("Invalid input. Please enter a number or 'skip'.")
+
+        if player.stamina >= selected_card.energy:
+            print(f"{player.name} uses {selected_card.name} on {boss.name}!")
+            player.stamina -= selected_card.energy
+            boss.inflicted_attack(selected_card.damage)
+            if selected_card.special_effect:
+                print(f"Special Effect: {selected_card.special_effect} applied!")
+                # Here you would implement the logic for the special effect on the boss.
+                # This might involve adding status effects to the boss object.
+        else:
+            print(f"{player.name} does not have enough stamina ({player.stamina}) to use {selected_card.name} (Energy: {selected_card.energy})!")
+            card_deck.append(selected_card) # Return the card to the deck if not enough stamina
+            continue # End the player's turn
+
+        if boss.health <= 0:
+            print(f"\n--- {boss.name} has been defeated! ---")
+            player.defeat_enemy(boss) # Assuming boss is an Enemy class instance
+            break
+
+        # Boss's attack (simple example)
+        if boss.health > 0:
+            boss_attack_damage = random.randint(10, 30)
+            print(f"\n--- {boss.name}'s Turn ---")
+            print(f"{boss.name} attacks {player.name} for {boss_attack_damage} damage!")
+            player.inflicted_attack(boss_attack_damage)
+            if player.health <= 0:
+                print(f"\n--- {player.name} has been defeated! ---")
+                break
