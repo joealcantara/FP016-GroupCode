@@ -1,0 +1,85 @@
+(main problem => ım confused with implementing special affects of the cards)
+-------------------------------
+
+
+import random
+
+class Card:
+    def __init__(self, name, energy):
+        self.name = name
+        self.energy = energy
+
+    def __str__(self):
+        return f"{self.name} (Energy: {self.energy})"
+
+class AttackCard(Card):
+    def __init__(self, name, element, damage, energy, special_effect=None):
+        super().__init__(name, energy)
+        self.element = element
+        self.damage = damage
+        self.special_effect = special_effect
+
+    def __str__(self):
+        info = f"{super().__str__()} - Element: {self.element}, Damage: {self.damage}"
+        if self.special_effect:
+            info += f", Special Effect: {self.special_effect}"
+        return info
+
+class DefenseCard(Card):
+    def __init__(self, name, block_value, energy, special_effect=None):
+        super().__init__(name, energy)
+        self.block_value = block_value
+        self.special_effect = special_effect
+
+    def __str__(self):
+        info = f"{super().__str__()} - Block Value: {self.block_value}"
+        if self.special_effect:
+            info += f", Special Effect: {self.special_effect}"
+        return info
+
+class SpellCard(Card):
+    def __init__(self, name, energy, special_effect):
+        super().__init__(name, energy)
+        self.special_effect = special_effect
+
+    def __str__(self):
+        return f"{super().__str__()} - Special Effect: {self.special_effect}"
+
+# Elemental Attack Cards
+flame_sword = AttackCard("Flame Sword", "Fire", 15, 2, "Burns the opponent for 2 turns (deals +5 damage per turn).")
+ice_spear = AttackCard("Ice Spear", "Ice", 10, 1, "Prevents the opponent from attacking next turn.")
+lightning_strike = AttackCard("Lightning Strike", "Electric", 20, 2, "50% chance to stun the opponent for 1 turn (cannot play cards).")
+poison_arrow = AttackCard("Poison Arrow", "Poison", 12, 1, "Poisons the opponent for 3 turns (5 -> 10 -> 15 damage).")
+stone_storm = AttackCard("Stone Storm", "Earth", 18, 2, "Reduces the opponent's defense by 30% for 1 turn.")
+
+# Defense Cards
+fire_shield = DefenseCard("Fire Shield", 20, 2, "Completely blocks fire attacks.")
+ice_wall = DefenseCard("Ice Wall", 15, 1, "Blocks ice attacks and slows the opponent for 1 turn.")
+lightning_reflect = DefenseCard("Lightning Reflect", 10, 1, "Reflects 50% of electric damage back to the opponent.")
+poison_cleanse = DefenseCard("Poison Cleanse", 0, 1, "Clears poison effects and heals 5 HP.")
+stone_armor = DefenseCard("Stone Armor", 25, 3, "Reduces incoming damage by 50% for 2 turns.")
+
+# Spell Cards
+element_fusion = SpellCard("Element Fusion", 3, "Combines 2 elemental cards in your hand to create a powerful hybrid card.")
+mana_burst = SpellCard("Mana Burst", 2, "Gain 2 extra AP this turn.")
+time_warp = SpellCard("Time Warp", 3, "Skip the opponent's turn and repeat your turn.")
+summon_element = SpellCard("Summon Element", 2, "Draw a random elemental card.")
+dispel_magic = SpellCard("Dispel Magic", 1, "Cancels the opponent's last played spell.")
+
+# Create a deck containing all cards
+deck = [flame_sword, ice_spear, lightning_strike, poison_arrow, stone_storm,
+        fire_shield, ice_wall, lightning_reflect, poison_cleanse, stone_armor,
+        element_fusion, mana_burst, time_warp, summon_element, dispel_magic]
+
+# Function to draw a random card from the deck
+def draw_card(deck):
+    if not deck:
+        return None
+    return random.choice(deck)
+
+# Example of drawing a card and printing its information
+drawn_card = draw_card(deck)
+if drawn_card:
+    print(f"Drawn Card: {drawn_card}")
+else:
+    print("The deck is empty!")
