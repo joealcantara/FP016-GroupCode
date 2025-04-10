@@ -147,14 +147,24 @@ class Player:
     def __str__(self):
         return f"{self.name} | HP: {self.health} | Stamina: {self.stamina}\n{self.weapon}\n{self.shield}"
 
-    # Loots special attributes from an enemy and randomly applies them to either weapon or shield
-    def loot_enemy_attributes(self, enemy):
-        print(f"{self.name} acquired special attribute(s) from {enemy.name}")
-        for attributes in enemy.attributes:
-            if random.choice(["weapon", "shield"]) == "weapon":
-                self.weapon.upgrade(attributes) 
-            else:
-                self.shield.upgrade(attributes)  
+     # Loots special attributes from an enemy and lets the player choose where to apply them
+        def loot_enemy_attributes(self, enemy):
+            print(f"{self.name} acquired special attribute(s) from {enemy.name}")
+            for attribute in enemy.attributes:
+                while True:
+                    choice = input(f"Apply attribute '{attribute}' to weapon, sheild or armour? (w/s/a): ").strip().lower()
+                    if choice == 'w':
+                        self.weapon.upgrade(attribute)
+                        break
+                    elif choice == 's':
+                        self.shield.upgrade(attribute)
+                        break
+                    elif choice == 'a':
+                        self.armour.upgrade(attribute)
+                        break
+                    else:
+                        print("Invalid input. Please enter 'w' for weapon or 's' for shield or 'a' for armour.")
+ 
 
     # Simulates the player defeating an enemy and looting their attributes
     def defeat_enemy(self, enemy):
