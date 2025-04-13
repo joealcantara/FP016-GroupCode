@@ -11,6 +11,46 @@
 8) *UI/UX & Visual Design (yagız)
 
 
+I watched YouTube videos and took some ideas that could improve the game's effectiveness. I then researched how I could implement these ideas if not covered in the YouTube video I watched. if confusing let me know
+
+1. Card Effect System
+Right now, special effects like "Burn" or "Stun" are just text. To make them meaningful:
+* Add a status effect handler (status_effects = []) for both Player and Enemy. found online
+* Apply effects per turn (e.g., reduce HP, skip turn, reduce attack power).
+* Implement effect duration tracking.
+  
+2. Turn System Improvements
+* Add a clear turn indicator (e.g., a label that says "Your Turn" or "Enemy Turn").
+* Disable input during enemy's turn to avoid multiple card clicks.
+  
+3. Computer Behavior
+* Make the enemy choose different attack strategies based on its attributes.
+* Implement "status-aware" AI (e.g., if poisoned, use cleanse card).
+  
+4. Card Descriptions in UI
+* Hovering or clicking on a card shows a tooltip or side panel with full effects.
+* Helps players make strategic choices without relying on memory.
+5. Combo/Elemental Synergy System
+* Example: Playing "Ice Spear" + "Stone Storm" applies “Frozen Armor Crumble” (bonus damage).
+* Encourage creative card chaining.
+  
+6. Deck Management Optimization
+* Use random.shuffle() and pop from a deck stack instead of random.choice() and remove.
+  
+7. Separation of Concerns
+* Move combat logic into a CombatManager class.
+* Move resource decision handling into a DecisionManager.
+* Helps with scaling and maintenance.
+  
+8. Data Storage for Cards & Decisions
+* Store cards and decisions in JSON or external files, and load them.
+* Easier to expand without touching game logic.
+  
+9. Autosave/Load
+* Save player state (health, inventory, resources) to a file.
+* Offer a "Continue Game" option when relaunching.
+
+
 
 ## Tasks completed
 2) Heath, stamina and Shield level and how they depreciate over time (tsola)
