@@ -47,7 +47,7 @@ class SpellCard(Card):
     def __str__(self):
         return f"{super().__str__()} - Special Effect: {self.special_effect}"
 
-
+5677995
 class LootedGoods:
     def __init__(self, name, restore_health=0):
         self.name = name
@@ -197,7 +197,7 @@ class Player:
                     break
                 elif choice == 'a':
                     self.armor.upgrade(attribute)
-
+5677995
 
 class Game:
     def __init__(self, base):
