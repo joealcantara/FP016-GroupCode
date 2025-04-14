@@ -1,0 +1,98 @@
+class SpecialAbilities:
+    class ApplyBurn:
+        def __init__(self, duration=2, damage_per_turn=5):
+            self.duration = duration
+            self.damage_per_turn = damage_per_turn
+
+        def activate(self, user, target):
+            if target:
+                burn = BurnEffect(self.duration, self.damage_per_turn)
+                target.apply_status_effect(burn)
+
+    class PreventAttackNextTurn:
+        def activate(self, user, target):
+            if target:
+                stun = StunEffect(duration=1) # Using Stun for simplicity
+                target.apply_status_effect(stun)
+                print(f"{target.name} will be unable to attack next turn.")
+
+    class ApplyStun:
+        def __init__(self, chance=0.5, duration=1):
+            self.chance = chance
+            self.duration = duration
+
+        def activate(self, user, target):
+            if target and random.random() < self.chance:
+                stun = StunEffect(self.duration)
+                target.apply_status_effect(stun)
+                print(f"{target.name} is stunned!")
+            else:
+                print(f"{target.name} resisted the stun.")
+
+    class ApplyPoison:
+        def __init__(self, duration=3, damage_sequence=[5, 10, 15]):
+            self.duration = duration
+            self.damage_sequence = damage_sequence
+
+        def activate(self, user, target):
+            if target:
+                poison = PoisonEffect(self.duration, self.damage_sequence)
+                target.apply_status_effect(poison)
+
+    class ReduceOpponentDefense:
+        def __init__(self, duration=1, reduction_percentage=30):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, user, target):
+            if target:
+                defense_reduction = DefenseReductionEffect(self.duration, self.reduction_percentage)
+                target.apply_status_effect(defense_reduction)
+
+    class BlockFireAttack:
+        def activate(self, user, target=None):
+            print(f"{user.name}'s Fire Shield is active, blocking fire attacks.")
+            user.fire_shield_active = True # Add a flag to the player object
+
+    class BlockIceAttackAndSlow:
+        def activate(self, user, target=None):
+            print(f"{user.name}'s Ice Wall blocks ice attacks and slows the opponent.")
+            user.ice_wall_active = True # Add a flag to the player object
+            if target:
+                slow = SlowEffect(duration=1)
+                target.apply_status_effect(slow)
+
+    class ReflectElectricDamage:
+        def __init__(self, reflect_percentage=0.5):
+            self.reflect_percentage = reflect_percentage
+
+        def activate(self, user, target=None):
+            print(f"{user.name}'s Lightning Reflect is active, reflecting {int(self.reflect_percentage * 100)}% electric damage.")
+            user.lightning_reflect_active = self.reflect_percentage # Add a flag
+
+    class ClearPoisonAndHeal:
+        def __init__(self, heal_amount=5):
+            self.heal_amount = heal_amount
+
+        def activate(self, user, target=None):
+            if user.has_status_effect("Poison"):
+                user.remove_status_effect("Poison")
+                print(f"{user.name} cleared the poison.")
+            user.heal(self.heal_amount)
+            print(f"{user.name} healed for {self.heal_amount} HP.")
+
+    class ReduceIncomingDamage:
+        def __init__(self, duration=2, reduction_percentage=50):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, user, target=None):
+            print(f"{user.name}'s Stone Armor reduces incoming damage by {self.reduction_percentage}% for {self.duration} turns.")
+            user.damage_reduction_active = (self.reduction_percentage / 100, self.duration)
+
+    class ElementFusion:
+        def activate(self, user, target=None):
+            print("Element Fusion ability needs to be implemented with hand management.")
+            # Implementation would involve checking player's hand for elemental cards
+            # and creating a new hybrid card. This is more complex and depends on
+            # how the hand and card drawing are implemented.
