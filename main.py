@@ -106,6 +106,7 @@ class Armor:
         return f"Armor: {self.name} | Defense: {self.defense} | Attributes: {attributes_list}"
 5665548
 
+# Represents an enemy character with lootable attributes
 class Enemy:
     def __init__(self, name, health, attributes=None):
         self.name = name
@@ -114,6 +115,7 @@ class Enemy:
         self.shield = 0
         self.stamina = 20
 
+    # String representation of the enemy
     def __str__(self):
         return f"Enemy: {self.name} | HP: {self.health} | Attributes: {', '.join(self.attributes)}"
 
@@ -127,7 +129,7 @@ class Enemy:
 
         self.health = max(self.health - actual_damage, 0)
 
-
+# Player class with health, stamina, weapon, and shield
 class Player:
     def __init__(self, name):
         self.name = name
@@ -143,10 +145,12 @@ class Player:
         self.resources = {}
         }
 
+    # String representation of the player showing stats, weapon, and shield
     def __str__(self):
         resources_str = " | ".join([f"{k}: {v}" for k, v in self.resources.items()])
         return f"{self.name} | HP: {self.health}/{self.max_health} | Stamina: {self.stamina}/{self.max_stamina} | Shield: {self.shield}\n{resources_str}\n{self.weapon}\n{self.shield_item}\n{self.armor}"
 
+    # defining how inflicted attacks would be dealt to a target
     def inflict_attack(self, attack, target):
         if self.stamina < attack.energy:
             return False
@@ -155,6 +159,7 @@ class Player:
         target.inflicted_attack(attack.damage)
         return True
 
+    # defining how to handle being attacked (damage taken and shield impact logic)
     def inflicted_attack(self, damage):
         self.stamina = max(self.stamina - damage * 0.25, 0)
 
@@ -168,6 +173,7 @@ class Player:
         actual_damage = max(0, actual_damage - self.armor.defense)
         self.health = max(self.health - actual_damage, 0)
 
+    # Adding looted goods to player inventory
     def loot_goods(self, looted_goods):
         self.inventory_looted_goods.append(looted_goods)
 
@@ -185,6 +191,7 @@ class Player:
     def defeat_enemy(self, enemy):
         self.loot_enemy_attributes(enemy)
 
+    # Loots special attributes from an enemy and lets the player choose where to apply them
     def loot_enemy_attributes(self, enemy):
         for attribute in enemy.attributes:
             while True:
@@ -229,6 +236,7 @@ class Game:
     5665548
 
     Billy and 5665548
+    # Elemental Attack Cards
     def create_card_decks(self):
         self.attack_deck = [
             AttackCard("Flame Sword", "Fire", 15, 2, "Burns the opponent for 2 turns"),
@@ -237,6 +245,7 @@ class Game:
             AttackCard("Poison Arrow", "Poison", 12, 1, "Poisons the opponent for 3 turns"),
             AttackCard("Stone Storm", "Earth", 18, 2, "Reduces the opponent's defense")
         ]
+        # Defense Cards
         self.defense_deck = [
             DefenseCard("Fire Shield", 20, 2, "Completely blocks fire attacks"),
             DefenseCard("Ice Wall", 15, 1, "Blocks ice attacks and slows the opponent"),
@@ -244,6 +253,7 @@ class Game:
             DefenseCard("Poison Cleanse", 0, 1, "Clears poison effects and heals 5 HP"),
             DefenseCard("Stone Armor", 25, 3, "Reduces incoming damage by 50%")
         ]
+        # Spell Cards
         self.spell_deck = [
             SpellCard("Element Fusion", 3, "Combines 2 elemental cards"),
             SpellCard("Mana Burst", 2, "Gain 2 extra AP this turn"),
@@ -432,13 +442,12 @@ Billy and 5665548
                 self.prepare_combat()
 5665548
 
-
+5665548
     def enemy_turn(self):
         attack_damage = random.randint(10, 20)
         self.player.inflicted_attack(attack_damage)
         self.update_stats()
 
-5665548
     def combat_victory(self):
         self.player.defeat_enemy(self.current_enemy)
         loot_options = [
