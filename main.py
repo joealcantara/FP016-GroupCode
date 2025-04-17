@@ -48,43 +48,47 @@ class SpellCard(Card):
         return f"{super().__str__()} - Special Effect: {self.special_effect}"
 
 5677995
+# Class representing a looted goods that can restore health
 class LootedGoods:
     def __init__(self, name, restore_health=0):
         self.name = name
         self.restore_health = restore_health
 
-
+# Represents a weapon with upgradeable attributes
 class Weapon:
     def __init__(self, name, base_level_damage):
         self.name = name
-        self.base_level_damage = base_level_damage
+        self.base_level_damage = base_level_damage # Base damage of the weapon
         self.attributes = []
 
     def upgrade(self, attribute):
         if attribute not in self.attributes:
             self.attributes.append(attribute)
 
+    # String representation of the weapon for easy printing
     def __str__(self):
         attributes_list = ", ".join(self.attributes) if self.attributes else "None"
         return f"Weapon: {self.name} | Damage: {self.base_level_damage} | Attributes: {attributes_list}"
 
-
+# Represents a shield with strength and potential attributes
 class Shield:
     def __init__(self, strength):
         self.strength = strength
         self.attributes = []
-
+        
+    # Method to upgrade shield's strength or add new attributes
     def upgrade(self, attribute):
         if attribute == "strength":
             self.strength += 10
         elif attribute not in self.attributes:
             self.attributes.append(attribute)
 
+    # String representation of the shield
     def __str__(self):
         attributes_list = ", ".join(self.attributes) if self.attributes else "None"
         return f"Shield | Durability: {self.strength} | Attributes: {attributes_list}"
 
-
+5665548
 class Armor:
     def __init__(self, name, defense):
         self.name = name
@@ -100,7 +104,7 @@ class Armor:
     def __str__(self):
         attributes_list = ", ".join(self.attributes) if self.attributes else "None"
         return f"Armor: {self.name} | Defense: {self.defense} | Attributes: {attributes_list}"
-
+5665548
 
 class Enemy:
     def __init__(self, name, health, attributes=None):
@@ -136,11 +140,7 @@ class Player:
         self.shield_item = Shield(20)
         self.armor = Armor("Knight's Plate", 15)
         self.inventory_looted_goods = []
-        self.resources = {
-            "Military": 5,
-            "Religion": 5,
-            "Economy": 5,
-            "People": 5
+        self.resources = {}
         }
 
     def __str__(self):
@@ -228,7 +228,7 @@ class Game:
         self.draw_decision_card()
     5665548
 
-    5665548
+    Billy and 5665548
     def create_card_decks(self):
         self.attack_deck = [
             AttackCard("Flame Sword", "Fire", 15, 2, "Burns the opponent for 2 turns"),
@@ -252,7 +252,7 @@ class Game:
             SpellCard("Dispel Magic", 1, "Cancels the opponent's last played spell")
         ]
         self.full_deck = self.attack_deck + self.defense_deck + self.spell_deck
-5665548
+Billy and 5665548
 
 5665548
     def draw_initial_hand(self):
@@ -432,12 +432,13 @@ class Game:
                 self.prepare_combat()
 5665548
 
-5665548
+
     def enemy_turn(self):
         attack_damage = random.randint(10, 20)
         self.player.inflicted_attack(attack_damage)
         self.update_stats()
 
+5665548
     def combat_victory(self):
         self.player.defeat_enemy(self.current_enemy)
         loot_options = [
