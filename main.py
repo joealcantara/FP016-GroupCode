@@ -199,6 +199,7 @@ class Player:
                     self.armor.upgrade(attribute)
 5677995
 
+5665548
 class Game:
     def __init__(self, base):
         self.base = base
@@ -211,21 +212,23 @@ class Game:
         self.create_card_decks()
         self.player_hand = self.draw_initial_hand()
         self.decision_deck = [
-            {"description": "Raise taxes to fund the military.",
-             "effects": {"Military": +2, "Economy": -1, "People": -2}},
-            {"description": "Build a grand temple to please the gods.",
-             "effects": {"Religion": +3, "Economy": -2}},
-            {"description": "Send aid to the poor.",
-             "effects": {"People": +2, "Economy": -1}},
-            {"description": "Declare war on a neighboring kingdom.",
-             "effects": {"Military": -1, "People": -1, "Economy": -2}},
-            {"description": "Hold a festival to boost morale.",
-             "effects": {"People": +3, "Economy": -1}}
+            {"description": "",
+             "effects": {}},
+            {"description": "",
+             "effects": {}},
+            {"description": "",
+             "effects": {}},
+            {"description": "",
+             "effects": {}},
+            {"description": "",
+             "effects": {}}
         ]
         self.setup_ui()
         self.current_phase = "resource"
         self.draw_decision_card()
+    5665548
 
+    5665548
     def create_card_decks(self):
         self.attack_deck = [
             AttackCard("Flame Sword", "Fire", 15, 2, "Burns the opponent for 2 turns"),
@@ -249,7 +252,9 @@ class Game:
             SpellCard("Dispel Magic", 1, "Cancels the opponent's last played spell")
         ]
         self.full_deck = self.attack_deck + self.defense_deck + self.spell_deck
+5665548
 
+5665548
     def draw_initial_hand(self):
         hand = []
         for _ in range(5):
@@ -326,7 +331,9 @@ class Game:
             else:
                 self.canvas.coords(self.card, 200, 50, 600, 250)
                 self.canvas.coords(self.card_text, 400, 150)
+5665548
 
+5665548
     def apply_decision_effects(self, direction):
         effects = self.current_decision["effects"]
         for resource, change in effects.items():
@@ -423,7 +430,9 @@ class Game:
                 if selected_card.name != "Time Warp":
                     self.enemy_turn()
                 self.prepare_combat()
+5665548
 
+5665548
     def enemy_turn(self):
         attack_damage = random.randint(10, 20)
         self.player.inflicted_attack(attack_damage)
@@ -482,9 +491,11 @@ class Game:
         self.canvas.unbind("<Button-1>")
         self.canvas.unbind("<B1-Motion>")
         self.canvas.unbind("<ButtonRelease-1>")
+5665548
 
-
+5665548
 if __name__ == "__main__":
     root = tk.Tk()
     game = Game(root)
     root.mainloop()
+5665548
