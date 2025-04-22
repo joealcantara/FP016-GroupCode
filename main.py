@@ -3,50 +3,318 @@ import random
 import time
 
 
-class Card:
-    def __init__(self, name, energy):
+# Status effects class
+class StatusEffect:
+    def __init__(self, name, duration):
         self.name = name
-        self.energy = energy
+        self.duration = duration
+
+    def apply(self, target):
+        pass
+
+    def tick(self, target):
+        self.duration -= 1
+        return self.duration <= 0
 
     def __str__(self):
-        return f"{self.name} (Energy: {self.energy})"
+        return f"{self.name} ({self.duration} turns)"
 
 
-class AttackCard(Card):
-    def __init__(self, name, element, damage, energy, special_effect=None):
-        super().__init__(name, energy)
-        self.element = element
+class BurnEffect(StatusEffect):
+    def __init__(self, duration, damage_per_turn):
+        super().__init__("Burn", duration)
+        self.damage_per_turn = damage_per_turn
+
+    def apply(self, target):
+        print(f"{target.name} is burning!")
+        target.take_damage(self.damage_per_turn, "Fire")
+
+    def tick(self, target):
+        print(f"{target.name} takes {self.damage_per_turn} burn damage.")
+        target.take_damage(self.damage_per_turn, "Fire")
+        return super().tick(target)
+
+
+class StunEffect(StatusEffect):
+    def __init__(self, duration=1):
+        super().__init__("Stun", duration)
+
+    def apply(self, target):
+        print(f"{target.name} is stunned and can't move!")
+        target.can_act = False
+
+
+class PoisonEffect(StatusEffect):
+    def __init__(self, duration, damage_sequence):
+        super().__init__("Poison", duration)
+        self.damage_sequence = list(damage_sequence)
+        self.current_tick = 0
+
+    def apply(self, target):
+        print(f"{target.name} is poisoned!")
+        self.tick(target)
+
+    def tick(self, target):
+        if self.current_tick < len(self.damage_sequence):
+            damage = self.damage_sequence[self.current_tick]
+            print(f"{target.name} takes {damage} poison damage.")
+            target.take_damage(damage, "Poison")
+            self.current_tick += 1
+        return super().tick(target)
+
+
+class DefenseReductionEffect(StatusEffect):
+    def __init__(self, duration, reduction_percentage):
+        super().__init__("Defense Reduction", duration)
+        self.reduction_percentage = reduction_percentage
+        self.original_defense = 0
+
+    def apply(self, target):
+        print(f"{target.name}'s defense is reduced by {self.reduction_percentage}%!")
+        self.original_defense = target.defense
+        target.defense -= int(target.defense * (self.reduction_percentage / 100))
+
+    def remove(self, target):
+        target.defense = self.original_defense
+        print(f"{target.name}'s defense returns to normal.")
+
+
+class SlowEffect(StatusEffect):
+    def __init__(self, duration=1):
+        super().__init__("Slow", duration)
+
+    def apply(self, target):
+        print(f"{target.name} is slowed!")
+        target.can_act = False
+
+
+# Special abilities class
+class SpecialAbilities:
+    class ApplyBurn:
+        def __init__(self, duration=2, damage_per_turn=5):
+            self.duration = duration
+            self.damage_per_turn = damage_per_turn
+
+        def activate(self, game_state, source, target):
+            if target:
+                burn = BurnEffect(self.duration, self.damage_per_turn)
+                target.apply_status_effect(burn)
+
+    class PreventAttackNextTurn:
+        def activate(self, game_state, source, target):
+            if target:
+                stun = StunEffect(duration=1)
+                target.apply_status_effect(stun)
+
+    class ApplyStun:
+        def __init__(self, chance=0.5, duration=1):
+            self.chance = chance
+            self.duration = duration
+
+        def activate(self, game_state, source, target):
+            if target and random.random() < self.chance:
+                stun = StunEffect(self.duration)
+                target.apply_status_effect(stun)
+                print(f"{target.name} is stunned!")
+            else:
+                print(f"{target.name} resisted the stun.")
+
+    class ApplyPoison:
+        def __init__(self, duration=3, damage_sequence=[5, 10, 15]):
+            self.duration = duration
+            self.damage_sequence = damage_sequence
+
+        def activate(self, game_state, source, target):
+            if target:
+                poison = PoisonEffect(self.duration, self.damage_sequence)
+                target.apply_status_effect(poison)
+
+    class ReduceOpponentDefense:
+        def __init__(self, duration=1, reduction_percentage=30):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, game_state, source, target):
+            if target:
+                defense_reduction = DefenseReductionEffect(self.duration, self.reduction_percentage)
+                target.apply_status_effect(defense_reduction)
+
+    class BlockFireAttack:
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} blocks fire attacks.")
+            source.fire_shield_active = True
+
+    class BlockIceAttackAndSlow:
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} blocks ice attacks and slows the opponent.")
+            source.ice_wall_active = True
+            if target:
+                slow = SlowEffect(duration=1)
+                target.apply_status_effect(slow)
+
+    class ReflectElectricDamage:
+        def __init__(self, reflect_percentage=0.5):
+            self.reflect_percentage = reflect_percentage
+
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} reflects {int(self.reflect_percentage * 100)}% of electric damage.")
+            source.lightning_reflect_active = self.reflect_percentage
+
+    class ClearPoisonAndHeal:
+        def __init__(self, heal_amount=5):
+            self.heal_amount = heal_amount
+
+        def activate(self, game_state, source, target=None):
+            if source.has_status_effect("Poison"):
+                source.remove_status_effect("Poison")
+                print(f"Poison cleared from {source.name}.")
+            source.heal(self.heal_amount)
+            print(f"{source.name} healed {self.heal_amount} HP.")
+
+    class ReduceIncomingDamage:
+        def __init__(self, duration=2, reduction_percentage=50):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} reduces incoming damage by {self.reduction_percentage}%.")
+            source.damage_reduction_active = (self.reduction_percentage / 100, self.duration)
+
+
+# Card class
+class Card:
+    def __init__(self, name, card_type, cost=0, damage=0, block=0, description="", ability=None, tags=None):
+        self.name = name
+        self.card_type = card_type
+        self.cost = cost
         self.damage = damage
-        self.special_effect = special_effect
+        self.block = block
+        self.description = description
+        self.ability = ability
+        self.tags = tags if tags is not None else []
 
     def __str__(self):
-        info = f"{super().__str__()} - Element: {self.element}, Damage: {self.damage}"
-        if self.special_effect:
-            info += f", Special Effect: {self.special_effect}"
+        info = f"{self.name} ({self.card_type}) - Cost: {self.cost}"
+        if self.damage > 0:
+            info += f", Damage: {self.damage}"
+        if self.block > 0:
+            info += f", Block: {self.block}"
+        info += f"\nDescription: {self.description}"
         return info
 
-
-class DefenseCard(Card):
-    def __init__(self, name, block_value, energy, special_effect=None):
-        super().__init__(name, energy)
-        self.block_value = block_value
-        self.special_effect = special_effect
-
-    def __str__(self):
-        info = f"{super().__str__()} - Block Value: {self.block_value}"
-        if self.special_effect:
-            info += f", Special Effect: {self.special_effect}"
-        return info
+    def play(self, game_state, player, target=None):
+        print(f"{player.name} played {self.name} card.")
+        if self.ability:
+            self.ability.activate(game_state, player, target)
+        if self.damage > 0 and target:
+            print(f"{target.name} takes {self.damage} damage.")
+            target.take_damage(self.damage)
+        if self.block > 0:
+            player.defense += self.block
+            print(f"{player.name} gains {self.block} defense.")
 
 
-class SpellCard(Card):
-    def __init__(self, name, energy, special_effect):
-        super().__init__(name, energy)
-        self.special_effect = special_effect
+# Elemental attack cards
+flame_sword_card = Card(
+    name="Flame Sword",
+    card_type="Attack",
+    cost=2,
+    damage=15,
+    description="Burns the opponent for 2 turns (+5 damage per turn)",
+    ability=SpecialAbilities.ApplyBurn(duration=2, damage_per_turn=5),
+    tags=["Fire"]
+)
 
-    def __str__(self):
-        return f"{super().__str__()} - Special Effect: {self.special_effect}"
+ice_spear_card = Card(
+    name="Ice Spear",
+    card_type="Attack",
+    cost=1,
+    damage=10,
+    description="Prevents opponent from attacking next turn",
+    ability=SpecialAbilities.PreventAttackNextTurn(),
+    tags=["Ice"]
+)
 
+lightning_strike_card = Card(
+    name="Lightning Strike",
+    card_type="Attack",
+    cost=2,
+    damage=20,
+    description="50% chance to stun the opponent for 1 turn",
+    ability=SpecialAbilities.ApplyStun(chance=0.5),
+    tags=["Electric"]
+)
+
+poison_arrow_card = Card(
+    name="Poison Arrow",
+    card_type="Attack",
+    cost=1,
+    damage=12,
+    description="Poisons the opponent for 3 turns (5 → 10 → 15 damage)",
+    ability=SpecialAbilities.ApplyPoison(duration=3, damage_sequence=[5, 10, 15]),
+    tags=["Poison"]
+)
+
+stone_storm_card = Card(
+    name="Stone Storm",
+    card_type="Attack",
+    cost=2,
+    damage=18,
+    description="Reduces opponent's defense by 30% for 1 turn",
+    ability=SpecialAbilities.ReduceOpponentDefense(duration=1, reduction_percentage=30),
+    tags=["Earth"]
+)
+
+# Defense cards
+fire_shield_card = Card(
+    name="Fire Shield",
+    card_type="Defense",
+    cost=2,
+    block=20,
+    description="Completely blocks fire attacks",
+    ability=SpecialAbilities.BlockFireAttack(),
+    tags=["Fire"]
+)
+
+ice_wall_card = Card(
+    name="Ice Wall",
+    card_type="Defense",
+    cost=1,
+    block=15,
+    description="Blocks ice attacks and slows the opponent",
+    ability=SpecialAbilities.BlockIceAttackAndSlow(),
+    tags=["Ice"]
+)
+
+lightning_reflect_card = Card(
+    name="Lightning Reflect",
+    card_type="Defense",
+    cost=1,
+    block=10,
+    description="Reflects 50% of electric damage",
+    ability=SpecialAbilities.ReflectElectricDamage(reflect_percentage=0.5),
+    tags=["Electric"]
+)
+
+poison_cleanse_card = Card(
+    name="Poison Cleanse",
+    card_type="Defense",
+    cost=1,
+    block=0,
+    description="Clears poison and heals 5 HP",
+    ability=SpecialAbilities.ClearPoisonAndHeal(heal_amount=5),
+    tags=["Poison"]
+)
+
+stone_armor_card = Card(
+    name="Stone Armor",
+    card_type="Defense",
+    cost=3,
+    block=25,
+    description="Reduces incoming damage by 50% for 2 turns",
+    ability=SpecialAbilities.ReduceIncomingDamage(duration=2, reduction_percentage=50),
+    tags=["Earth"]
+)
 5677995
 # Class representing a looted goods that can restore health
 class LootedGoods:
