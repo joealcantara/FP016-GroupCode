@@ -858,6 +858,59 @@ Billy and 5665548
         self.canvas.unbind("<ButtonRelease-1>")
 5665548
 
+5652765
+# Game state class
+class GameState:
+    def __init__(self, player1, player2):
+        self.players = [player1, player2]
+        self.current_player_index = 0
+        self.turn = 1
+
+    def current_player(self):
+        return self.players[self.current_player_index]
+
+    def opponent(self):
+        return self.players[1 - self.current_player_index]
+
+    def switch_player(self):
+        self.current_player_index = 1 - self.current_player_index
+
+    def play_turn(self):
+        current = self.current_player()
+        opponent = self.opponent()
+
+        current.begin_turn()
+        current.show_hand()
+
+        if current.hand:
+            played = False
+            while not played:
+                try:
+                    choice = int(input("Enter the card number you want to play (0 to exit): ")) - 1
+                    if choice == -1:
+                        break
+                    played = current.play_card(choice, self, opponent)
+                except (ValueError, IndexError):
+                    print("Invalid input!")
+
+        current.end_turn()
+        self.switch_player()
+        self.turn += 1
+
+    def is_game_over(self):
+        return any(player.health <= 0 for player in self.players)
+
+    def display_status(self):
+        print("\n" + "=" * 40)
+        print(f"Turn {self.turn}")
+        for player in self.players:
+            status = f"{player.name}: HP {player.health}/{player.max_health}"
+            if player.status_effects:
+                status += f" | Effects: {', '.join(str(effect) for effect in player.status_effects)}"
+            print(status)
+        print("=" * 40)
+5652765
+# Game initialization
 def main():
     print("Welcome to  Game!")
     player_name = input("Please enter your name: ")
@@ -866,9 +919,29 @@ def main():
     computer = Player("Computer")
 
     game = GameState(player, computer)
+    
+    5652765
+    # Starting hand
+    for _ in range(5):
+        player.draw_card()
+        computer.draw_card()
+
+    while not game.is_game_over():
+        game.display_status()
+        game.play_turn()
+
+    game.display_status()
+    winner = player if player.health > 0 else computer
+    print(f"\nGame over! Winner: {winner.name}")
+    
+
+
 5665548
 if __name__ == "__main__":
     root = tk.Tk()
     game = Game(root)
     root.mainloop()
 5665548
+
+
+
