@@ -3,6 +3,8 @@ import random
 import time
 
 
+
+5652765
 # Status effects class
 class StatusEffect:
     def __init__(self, name, duration):
@@ -19,7 +21,7 @@ class StatusEffect:
     def __str__(self):
         return f"{self.name} ({self.duration} turns)"
 
-
+5652765
 class BurnEffect(StatusEffect):
     def __init__(self, duration, damage_per_turn):
         super().__init__("Burn", duration)
@@ -34,7 +36,7 @@ class BurnEffect(StatusEffect):
         target.take_damage(self.damage_per_turn, "Fire")
         return super().tick(target)
 
-
+5652765
 class StunEffect(StatusEffect):
     def __init__(self, duration=1):
         super().__init__("Stun", duration)
@@ -43,7 +45,7 @@ class StunEffect(StatusEffect):
         print(f"{target.name} is stunned and can't move!")
         target.can_act = False
 
-
+5652765
 class PoisonEffect(StatusEffect):
     def __init__(self, duration, damage_sequence):
         super().__init__("Poison", duration)
@@ -62,7 +64,7 @@ class PoisonEffect(StatusEffect):
             self.current_tick += 1
         return super().tick(target)
 
-
+5652765
 class DefenseReductionEffect(StatusEffect):
     def __init__(self, duration, reduction_percentage):
         super().__init__("Defense Reduction", duration)
@@ -78,7 +80,7 @@ class DefenseReductionEffect(StatusEffect):
         target.defense = self.original_defense
         print(f"{target.name}'s defense returns to normal.")
 
-
+5652765
 class SlowEffect(StatusEffect):
     def __init__(self, duration=1):
         super().__init__("Slow", duration)
@@ -89,6 +91,7 @@ class SlowEffect(StatusEffect):
 
 
 # Special abilities class
+5652765
 class SpecialAbilities:
     class ApplyBurn:
         def __init__(self, duration=2, damage_per_turn=5):
@@ -99,13 +102,13 @@ class SpecialAbilities:
             if target:
                 burn = BurnEffect(self.duration, self.damage_per_turn)
                 target.apply_status_effect(burn)
-
+5652765
     class PreventAttackNextTurn:
         def activate(self, game_state, source, target):
             if target:
                 stun = StunEffect(duration=1)
                 target.apply_status_effect(stun)
-
+5652765
     class ApplyStun:
         def __init__(self, chance=0.5, duration=1):
             self.chance = chance
@@ -118,7 +121,7 @@ class SpecialAbilities:
                 print(f"{target.name} is stunned!")
             else:
                 print(f"{target.name} resisted the stun.")
-
+5652765
     class ApplyPoison:
         def __init__(self, duration=3, damage_sequence=[5, 10, 15]):
             self.duration = duration
@@ -128,7 +131,7 @@ class SpecialAbilities:
             if target:
                 poison = PoisonEffect(self.duration, self.damage_sequence)
                 target.apply_status_effect(poison)
-
+5652765
     class ReduceOpponentDefense:
         def __init__(self, duration=1, reduction_percentage=30):
             self.duration = duration
@@ -138,12 +141,12 @@ class SpecialAbilities:
             if target:
                 defense_reduction = DefenseReductionEffect(self.duration, self.reduction_percentage)
                 target.apply_status_effect(defense_reduction)
-
+5652765
     class BlockFireAttack:
         def activate(self, game_state, source, target=None):
             print(f"{source.name} blocks fire attacks.")
             source.fire_shield_active = True
-
+5652765
     class BlockIceAttackAndSlow:
         def activate(self, game_state, source, target=None):
             print(f"{source.name} blocks ice attacks and slows the opponent.")
@@ -151,7 +154,7 @@ class SpecialAbilities:
             if target:
                 slow = SlowEffect(duration=1)
                 target.apply_status_effect(slow)
-
+5652765
     class ReflectElectricDamage:
         def __init__(self, reflect_percentage=0.5):
             self.reflect_percentage = reflect_percentage
@@ -159,7 +162,7 @@ class SpecialAbilities:
         def activate(self, game_state, source, target=None):
             print(f"{source.name} reflects {int(self.reflect_percentage * 100)}% of electric damage.")
             source.lightning_reflect_active = self.reflect_percentage
-
+5652765
     class ClearPoisonAndHeal:
         def __init__(self, heal_amount=5):
             self.heal_amount = heal_amount
@@ -170,7 +173,7 @@ class SpecialAbilities:
                 print(f"Poison cleared from {source.name}.")
             source.heal(self.heal_amount)
             print(f"{source.name} healed {self.heal_amount} HP.")
-
+5652765
     class ReduceIncomingDamage:
         def __init__(self, duration=2, reduction_percentage=50):
             self.duration = duration
@@ -182,6 +185,7 @@ class SpecialAbilities:
 
 
 # Card class
+5652765
 class Card:
     def __init__(self, name, card_type, cost=0, damage=0, block=0, description="", ability=None, tags=None):
         self.name = name
@@ -213,7 +217,7 @@ class Card:
             player.defense += self.block
             print(f"{player.name} gains {self.block} defense.")
 
-
+5652765
 # Elemental attack cards
 flame_sword_card = Card(
     name="Flame Sword",
@@ -315,6 +319,27 @@ stone_armor_card = Card(
     ability=SpecialAbilities.ReduceIncomingDamage(duration=2, reduction_percentage=50),
     tags=["Earth"]
 )
+    def create_default_deck(self):
+        default_deck = []
+        cards = [
+            flame_sword_card, ice_spear_card, lightning_strike_card,
+            poison_arrow_card, stone_storm_card, fire_shield_card,
+            ice_wall_card, lightning_reflect_card, poison_cleanse_card,
+            stone_armor_card
+        ]
+        for _ in range(3):  # 3 copies of each card
+            default_deck.extend(cards)
+        random.shuffle(default_deck)
+        return default_deck
+
+    def draw_card(self):
+        if len(self.hand) < 7 and self.deck:
+            card = self.deck.pop()
+            self.hand.append(card)
+            print(f"{self.name} drew {card.name} card.")
+            return card
+        return None
+
 5677995
 # Class representing a looted goods that can restore health
 class LootedGoods:
@@ -413,6 +438,94 @@ class Player:
         self.resources = {}
         }
 
+    #Default deck for player
+    5652765 
+      def create_default_deck(self):
+        default_deck = []
+          
+        cards = [
+            flame_sword_card, ice_spear_card, lightning_strike_card,
+            poison_arrow_card, stone_storm_card, fire_shield_card,
+            ice_wall_card, lightning_reflect_card, poison_cleanse_card,
+            stone_armor_card
+        ]
+          
+        for _ in range(3):  # 3 copies of each card
+            default_deck.extend(cards)
+        random.shuffle(default_deck)
+        return default_deck
+    56562765
+    def draw_card(self): #functionf for drawing card
+        if len(self.hand) < 7 and self.deck:
+            card = self.deck.pop()
+            self.hand.append(card)
+            print(f"{self.name} drew {card.name} card.")
+            return card
+        return None  
+    5652765
+    def play_card(self, card_index, game_state, target=None):
+        if 0 <= card_index < len(self.hand):
+            card = self.hand[card_index]
+            if self.stamina >= card.cost:
+                self.stamina -= card.cost
+                card.play(game_state, self, target)
+                self.hand.pop(card_index)
+                return True
+            else:
+                print("Not enough AP!")
+        return False
+    5652765
+    def take_damage(self, amount, damage_type="Physical"):
+        if damage_type == "Fire" and self.fire_shield_active:
+            print("Fire attack blocked!")
+            return
+        if damage_type == "Ice" and self.ice_wall_active:
+            print("Ice attack blocked!")
+            return
+
+        final_damage = amount
+        if self.damage_reduction_active[0] > 0:
+            reduction = self.damage_reduction_active[0]
+            final_damage = int(final_damage * (1 - reduction))
+            print(f"Damage reduced by {reduction * 100}%.")
+
+        if damage_type == "Electric" and self.lightning_reflect_active > 0:
+            reflected = int(final_damage * self.lightning_reflect_active)
+            final_damage -= reflected
+            print(f"{self.lightning_reflect_active * 100}% damage reflected.")
+
+        self.health -= max(0, final_damage - self.defense)
+        print(f"{self.name} takes {max(0, final_damage - self.defense)} damage. Remaining HP: {self.health}")
+        
+    5652765
+    def heal(self, amount):
+        self.health = min(self.health + amount, self.max_health)
+        print(f"{self.name} heals {amount} HP. New HP: {self.health}")
+        
+    5652765
+    def apply_status_effect(self, effect):
+        self.status_effects.append(effect)
+        effect.apply(self)
+        
+    5652765
+    def remove_status_effect(self, effect_name):
+        for effect in self.status_effects[:]:
+            if effect.name == effect_name:
+                if hasattr(effect, 'remove'):
+                    effect.remove(self)
+                self.status_effects.remove(effect)
+                print(f"{effect_name} effect removed.")
+    5652765
+    def begin_turn(self):
+        self.can_act = True
+        self.stamina = min(self.stamina + 3, self.max_stamina)
+        self.defense = 0
+        self.fire_shield_active = False
+        self.ice_wall_active = False
+        self.draw_card()
+        print(f"\n{self.name}'s turn begins. AP: {self.stamina}")
+
+    5665548
     # String representation of the player showing stats, weapon, and shield
     def __str__(self):
         resources_str = " | ".join([f"{k}: {v}" for k, v in self.resources.items()])
@@ -503,33 +616,7 @@ class Game:
         self.draw_decision_card()
     5665548
 
-    Billy and 5665548
-    # Elemental Attack Cards
-    def create_card_decks(self):
-        self.attack_deck = [
-            AttackCard("Flame Sword", "Fire", 15, 2, "Burns the opponent for 2 turns"),
-            AttackCard("Ice Spear", "Ice", 10, 1, "Prevents the opponent from attacking next turn"),
-            AttackCard("Lightning Strike", "Electric", 20, 2, "50% chance to stun the opponent"),
-            AttackCard("Poison Arrow", "Poison", 12, 1, "Poisons the opponent for 3 turns"),
-            AttackCard("Stone Storm", "Earth", 18, 2, "Reduces the opponent's defense")
-        ]
-        # Defense Cards
-        self.defense_deck = [
-            DefenseCard("Fire Shield", 20, 2, "Completely blocks fire attacks"),
-            DefenseCard("Ice Wall", 15, 1, "Blocks ice attacks and slows the opponent"),
-            DefenseCard("Lightning Reflect", 10, 1, "Reflects 50% of electric damage"),
-            DefenseCard("Poison Cleanse", 0, 1, "Clears poison effects and heals 5 HP"),
-            DefenseCard("Stone Armor", 25, 3, "Reduces incoming damage by 50%")
-        ]
-        # Spell Cards
-        self.spell_deck = [
-            SpellCard("Element Fusion", 3, "Combines 2 elemental cards"),
-            SpellCard("Mana Burst", 2, "Gain 2 extra AP this turn"),
-            SpellCard("Time Warp", 3, "Skip the opponent's turn"),
-            SpellCard("Summon Element", 2, "Draw a random elemental card"),
-            SpellCard("Dispel Magic", 1, "Cancels the opponent's last played spell")
-        ]
-        self.full_deck = self.attack_deck + self.defense_deck + self.spell_deck
+ 
 Billy and 5665548
 
 5665548
@@ -771,6 +858,14 @@ Billy and 5665548
         self.canvas.unbind("<ButtonRelease-1>")
 5665548
 
+def main():
+    print("Welcome to  Game!")
+    player_name = input("Please enter your name: ")
+
+    player = Player(player_name)
+    computer = Player("Computer")
+
+    game = GameState(player, computer)
 5665548
 if __name__ == "__main__":
     root = tk.Tk()
