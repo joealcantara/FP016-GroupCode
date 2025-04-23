@@ -912,7 +912,7 @@ class GameState:
 5652765
 # Game initialization
 def main():
-    print("Welcome to  Game!")
+    print("Welcome to  Redemption!")
     player_name = input("Please enter your name: ")
 
     player = Player(player_name)
