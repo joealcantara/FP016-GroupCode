@@ -61,8 +61,8 @@ Right now, special effects like "Burn" or "Stun" are just text. To make them mea
  -) . Deck Management Optimization #billy
 * Use random.shuffle() and pop from a deck stack instead of random.choice() and remove.
 * drawing cards
--) special card abbilities
--)initial deck
--) take damage / play card / heal / apply status /remove status / show hand functions
--) main menu
-- game turns  
+* special card abbilities
+*initial deck
+* take damage / play card / heal / apply status /remove status / show hand functions
+* main menu
+* game turns  
