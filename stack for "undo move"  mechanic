@@ -1,0 +1,13 @@
+#recording-each-move
+class ActionStack: 
+    def __init__(self):
+        self.stack = []
+      
+  #adds-lastmove-to-stack
+    def push(self, action):
+        self.stack.append(action)
+    #pops-lastmoev-from-stack
+    def pop(self):
+        if self.stack:
+            return self.stack.pop()
+        return None
