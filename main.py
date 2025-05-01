@@ -525,7 +525,7 @@ class Player:
         self.draw_card()
         print(f"\n{self.name}'s turn begins. AP: {self.stamina}")
 
-    5677995 this is my code!
+    5677995 
     # String representation of the player showing stats, weapon, and shield
     def __str__(self):
         resources_str = " | ".join([f"{k}: {v}" for k, v in self.resources.items()])
