@@ -66,6 +66,8 @@ I watched YouTube videos and took some ideas that could improve the game's effec
 * take damage / play card / heal / apply status /remove status / show hand functions
 * main menu
 * game turns
+
+* 
 -) 1. Card Effect System
 Right now, special effects like "Burn" or "Stun" are just text. To make them meaningful:
 * Add a status effect handler (status_effects = []) for both Player and Enemy. found online
