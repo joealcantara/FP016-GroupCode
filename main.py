@@ -797,6 +797,143 @@ Billy and 5665548
                 self.prepare_combat()
 5665548
 
+
+5677995
+#Looted Goods
+class LootedGoods:
+    def __init__(self, name, restore_health=0):
+        self.name = name
+        self.restore_health = restore_health
+
+    def __str__(self):
+        return f"{self.name} (+{self.restore_health} HP)"
+
+#Weapon Class
+class Weapon:
+    def __init__(self, name, base_level_damage):
+        self.name = name
+        self.base_level_damage = base_level_damage
+        self.attributes = []
+
+    def upgrade(self, attribute):
+        if attribute not in self.attributes:
+            self.attributes.append(attribute)
+            print(f"{self.name} has obtained the attribute: {attribute} from opponent.")
+
+    def __str__(self):
+        attr = ", ".join(self.attributes) if self.attributes else "None"
+        return f"Weapon: {self.name} | Damage: {self.base_level_damage} | Attributes: {attr}"
+
+#Shield Class
+class Shield:
+    def __init__(self, strength):
+        self.strength = strength
+        self.attributes = []
+
+    def upgrade(self, attribute):
+        if attribute == "strength":
+            self.strength += 10
+            print("Shield strength increased by 10.")
+        elif attribute not in self.attributes:
+            self.attributes.append(attribute)
+            print(f"Shield obtained attribute: {attribute}.")
+
+    def __str__(self):
+        attr = ", ".join(self.attributes) if self.attributes else "None"
+        return f"Shield | Strength: {self.strength} | Attributes: {attr}"
+
+#armour class
+class Armour:
+    def __init__(self, defense):
+        self.defense = defense
+        self.attributes = []
+
+    def upgrade(self, attribute):
+        if attribute == "defense":
+            self.defense += 10
+            print("Armour defense increased by 10.")
+        elif attribute not in self.attributes:
+            self.attributes.append(attribute)
+            print(f"Armour gained attribute: {attribute}.")
+
+    def __str__(self):
+        attr = ", ".join(self.attributes) if self.attributes else "None"
+        return f"Armour | Defense: {self.defense} | Attributes: {attr}"
+
+#Enemy Class
+class Enemy:
+    def __init__(self, name, health, attributes=None):
+        self.name = name
+        self.health = health
+        self.attributes = attributes if attributes else []
+
+    def __str__(self):
+        return f"Enemy: {self.name} | HP: {self.health} | Attributes: {', '.join(self.attributes)}"
+
+# Player Class
+class Player:
+    def __init__(self, name):
+        self.name = name
+        self.max_health = 300
+        self.health = 300
+        self.max_stamina = 50
+        self.stamina = 3
+        self.weapon = Weapon("Crimson Double Edge Sword", base_level_damage=20)
+        self.shield = Shield(strength=20)
+        self.armour = Armour(defense=20)
+        self.inventory_looted_goods = []
+
+    def __str__(self):
+        return f"{self.name} | HP: {self.health} | Stamina: {self.stamina}\n{self.weapon}\n{self.shield}"
+
+    def attack(self, enemy):
+        if self.stamina >= 1:
+            damage = self.weapon.base_level_damage
+            print(f"{self.name} attacks {enemy.name} for {damage} damage!")
+            enemy.health = max(0, enemy.health - damage)
+            self.stamina -= 1
+        else:
+            print(f"{self.name} has no stamina to attack.")
+
+    def consume_looted_goods(self, item_name):
+        for item in self.inventory_looted_goods:
+            if item.name.lower() == item_name.lower():
+                self.health = min(self.max_health, self.health + item.restore_health)
+                self.inventory_looted_goods.remove(item)
+                print(f"{self.name} consumed {item.name}, restoring {item.restore_health} HP.")
+                return
+        print(f"{self.name} has no {item_name} to consume.")
+
+    def loot_goods(self, item):
+        self.inventory_looted_goods.append(item)
+        print(f"{self.name} looted {item.name}.")
+
+    def loot_enemy_attributes(self, enemy):
+        print(f"{self.name} acquires attribute(s) from {enemy.name}.")
+        for attribute in enemy.attributes:
+            while True:
+                choice = input(f"Apply attribute '{attribute}' to weapon, shield, armour or skip? (w/s/a/x): ").strip().lower()
+                if choice == 'w':
+                    self.weapon.upgrade(attribute)
+                    break
+                elif choice == 's':
+                    self.shield.upgrade(attribute)
+                    break
+                elif choice == 'a':
+                    self.armour.upgrade(attribute)
+                    break
+                elif choice == 'x':
+                    print(f"Skipped attribute '{attribute}'.")
+                    break
+                else:
+                    print("Invalid input. Enter 'w', 's', or 'x'.")
+
+    def defeat_enemy(self, enemy):
+        print(f"{self.name} defeated {enemy.name}!")
+        self.loot_enemy_attributes(enemy)
+5677995
+
+
 5665548
     def enemy_turn(self):
         attack_damage = random.randint(10, 20)
