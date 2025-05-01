@@ -10,7 +10,11 @@
 8) *UI/UX & Visual Design (yagız)
 
 
-I watched YouTube videos and took some ideas that could improve the game's effectiveness. I then researched how I could implement these ideas if not covered in the YouTube video I watched. if confusing let me know
+
+TSOLA WILL DO THIS below
+as well as create 2 bosses  
+
+I watched YouTube videos and took some ideas that could improve the game's effectiveness. I then researched how I could implement these ideas if not covered in the YouTube video I watched. If it's confusing, let me know
 
 1. Card Effect System
 Right now, special effects like "Burn" or "Stun" are just text. To make them meaningful:
