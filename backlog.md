@@ -16,11 +16,7 @@ as well as create 2 bosses
 
 I watched YouTube videos and took some ideas that could improve the game's effectiveness. I then researched how I could implement these ideas if not covered in the YouTube video I watched. If it's confusing, let me know
 
-1. Card Effect System
-Right now, special effects like "Burn" or "Stun" are just text. To make them meaningful:
-* Add a status effect handler (status_effects = []) for both Player and Enemy. found online
-* Apply effects per turn (e.g., reduce HP, skip turn, reduce attack power).
-* Implement effect duration tracking.
+
   
 
   
@@ -69,4 +65,9 @@ Right now, special effects like "Burn" or "Stun" are just text. To make them mea
 *initial deck
 * take damage / play card / heal / apply status /remove status / show hand functions
 * main menu
-* game turns  
+* game turns
+-) 1. Card Effect System
+Right now, special effects like "Burn" or "Stun" are just text. To make them meaningful:
+* Add a status effect handler (status_effects = []) for both Player and Enemy. found online
+* Apply effects per turn (e.g., reduce HP, skip turn, reduce attack power).
+* Implement effect duration tracking.
