@@ -381,7 +381,7 @@ class Shield:
         attributes_list = ", ".join(self.attributes) if self.attributes else "None"
         return f"Shield | Durability: {self.strength} | Attributes: {attributes_list}"
 
-5665548
+5665548 5677995
 class Armor:
     def __init__(self, name, defense):
         self.name = name
@@ -397,7 +397,7 @@ class Armor:
     def __str__(self):
         attributes_list = ", ".join(self.attributes) if self.attributes else "None"
         return f"Armor: {self.name} | Defense: {self.defense} | Attributes: {attributes_list}"
-5665548
+5665548 5677995
 
 # Represents an enemy character with lootable attributes
 class Enemy:
@@ -421,7 +421,7 @@ class Enemy:
             actual_damage = damage
 
         self.health = max(self.health - actual_damage, 0)
-
+5677995
 # Player class with health, stamina, weapon, and shield
 class Player:
     def __init__(self, name):
@@ -474,7 +474,7 @@ class Player:
             else:
                 print("Not enough AP!")
         return False
-    5652765
+    5652765 5677995
     def take_damage(self, amount, damage_type="Physical"):
         if damage_type == "Fire" and self.fire_shield_active:
             print("Fire attack blocked!")
@@ -525,7 +525,7 @@ class Player:
         self.draw_card()
         print(f"\n{self.name}'s turn begins. AP: {self.stamina}")
 
-    5665548
+    5677995 this is my code!
     # String representation of the player showing stats, weapon, and shield
     def __str__(self):
         resources_str = " | ".join([f"{k}: {v}" for k, v in self.resources.items()])
@@ -858,7 +858,7 @@ Billy and 5665548
         self.canvas.unbind("<ButtonRelease-1>")
 5665548
 
-5652765
+5652765 5677995
 # Game state class
 class GameState:
     def __init__(self, player1, player2):
