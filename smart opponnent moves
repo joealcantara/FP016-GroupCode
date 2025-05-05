@@ -1,0 +1,161 @@
+class AIPlayer(Player):
+    def __init__(self, name="Computer", max_health=100, boss_type=None):
+        super().__init__(name, max_health)
+        self.boss_type = boss_type  # None (normal), "fire", "ice", "lightning", "earth", "poison"
+        self.difficulty = "hard" if boss_type else "medium"  # Bosses play on hard mode
+        
+        # Boss special abilities
+        self.special_ability_cooldown = 0
+        self.set_boss_attributes()
+
+    def set_boss_attributes(self):
+        """Initialize boss-specific attributes"""
+        if self.boss_type == "fire":
+            self.max_health = 150
+            self.health = 150
+            self.fire_resistance = 0.5  # Takes 50% less fire damage
+        elif self.boss_type == "ice":
+            self.max_health = 130
+            self.health = 130
+            self.ice_resistance = 0.5  # Takes 50% less ice damage
+        elif self.boss_type == "lightning":
+            self.max_stamina = 12  # More AP for lightning boss
+        elif self.boss_type == "earth":
+            self.defense += 10  # Base defense bonus
+        elif self.boss_type == "poison":
+            self.poison_potency = 1.5  # Poison effects are stronger
+
+    def make_decision(self, game_state):
+        """Advanced decision-making logic for all boss types"""
+        opponent = game_state.opponent()
+        playable_cards = [card for card in self.hand if card.cost <= self.stamina]
+        
+        # 1. Emergency actions (healing/defense when low HP)
+        if self.health < 0.3 * self.max_health:
+            action = self._emergency_action(game_state)
+            if action: return action
+
+        # 2. Boss-specific special abilities
+        if self.boss_type and self.special_ability_cooldown <= 0:
+            action = self._use_boss_special_ability(game_state)
+            if action: return action
+
+        # 3. Strategic card plays based on boss type
+        action = self._boss_strategic_move(game_state)
+        if action: return action
+
+        # 4. Default AI behavior if no special moves available
+        return self._default_ai_behavior(game_state)
+
+    def _emergency_action(self, game_state):
+        """Handle low HP situations"""
+        opponent = game_state.opponent()
+        defense_cards = [c for c in self.hand if c.card_type == "Defense" and c.cost <= self.stamina]
+        
+        # Prioritize healing cards
+        heal_card = next((c for c in defense_cards if "heal" in c.name.lower()), None)
+        if heal_card:
+            return self.play_card(self.hand.index(heal_card), game_state)
+
+        # Then strongest defense card
+        if defense_cards:
+            best_defense = max(defense_cards, key=lambda x: x.block)
+            return self.play_card(self.hand.index(best_defense), game_state)
+        
+        return False
+
+    def _use_boss_special_ability(self, game_state):
+        """Boss-specific special moves"""
+        opponent = game_state.opponent()
+        
+        if self.boss_type == "fire":
+            # Fire boss: Massive AoE attack when below 50% HP
+            if self.health < self.max_health * 0.5:
+                fire_cards = [c for c in self.hand if "fire" in c.tags and c.cost <= self.stamina]
+                if fire_cards:
+                    strongest = max(fire_cards, key=lambda x: x.damage)
+                    self.special_ability_cooldown = 3
+                    return self.play_card(self.hand.index(strongest), game_state, opponent)
+
+        elif self.boss_type == "ice":
+            # Ice boss: Freeze opponent for 2 turns
+            if not opponent.has_status_effect("Stun"):
+                ice_cards = [c for c in self.hand if "ice" in c.tags and c.cost <= self.stamina]
+                if ice_cards:
+                    self.special_ability_cooldown = 4
+                    return self.play_card(self.hand.index(ice_cards[0]), game_state, opponent)
+
+     
+
+        return False
+
+    def _boss_strategic_move(self, game_state):
+        """Boss-type specific strategies"""
+        opponent = game_state.opponent()
+        playable_cards = [c for c in self.hand if c.cost <= self.stamina]
+        
+        if self.boss_type == "fire":
+            # Fire boss: Prefers burn effects and high damage
+            burn_cards = [c for c in playable_cards if "Burn" in str(c.ability)]
+            if burn_cards and not opponent.has_status_effect("Burn"):
+                return self.play_card(self.hand.index(burn_cards[0]), game_state, opponent)
+            
+        elif self.boss_type == "poison":
+            # Poison boss: Stacks poison effects
+            poison_cards = [c for c in playable_cards if "Poison" in str(c.ability)]
+            if poison_cards:
+                return self.play_card(self.hand.index(poison_cards[0]), game_state, opponent)
+            
+        
+        return False
+
+    def _default_ai_behavior(self, game_state):
+        """Fallback decision making when no special moves available"""
+        opponent = game_state.opponent()
+        playable_cards = [c for c in self.hand if c.cost <= self.stamina]
+        
+        if not playable_cards:
+            return False
+
+        # Prioritize cards that counter opponent's strengths
+        if opponent.fire_shield_active:
+            non_fire_attacks = [c for c in playable_cards 
+                               if c.card_type == "Attack" and "fire" not in c.tags]
+            if non_fire_attacks:
+                return self.play_card(self.hand.index(non_fire_attacks[0]), game_state, opponent)
+
+        # Default to strongest available move
+        if self.difficulty == "easy":
+            card = random.choice(playable_cards)
+        elif self.difficulty == "medium":
+            card = max(playable_cards, key=lambda x: x.damage if x.card_type == "Attack" else x.block)
+        else:  # hard
+            card = self._find_best_combo(playable_cards, opponent)
+
+        if card.card_type == "Attack":
+            return self.play_card(self.hand.index(card), game_state, opponent)
+        else:
+            return self.play_card(self.hand.index(card), game_state)
+
+    def _find_best_combo(self, cards, opponent):
+        """Find optimal card combinations for hard difficulty"""
+        # 1. Look for defense reduction combos
+        if not any(eff.name == "Defense Reduction" for eff in opponent.status_effects):
+            defense_reducers = [c for c in cards 
+                              if "ReduceOpponentDefense" in str(c.ability)]
+            if defense_reducers:
+                return defense_reducers[0]
+        
+        # 2. Look for status effect stacking
+        status_cards = [c for c in cards if c.ability is not None]
+        if status_cards:
+            return max(status_cards, key=lambda x: x.damage if x.card_type == "Attack" else x.block)
+        
+        # 3. Default to highest value card
+        return max(cards, key=lambda x: x.damage if x.card_type == "Attack" else x.block)
+
+    def end_turn(self):
+        """Update cooldowns at turn end"""
+        super().end_turn()
+        if self.special_ability_cooldown > 0:
+            self.special_ability_cooldown -= 1
