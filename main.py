@@ -340,7 +340,40 @@ stone_armor_card = Card(
             return card
         return None
 
-5677995
+#5677995
+def load_cards(file_path="cards.json"):
+    with open(file_path) as f:
+        return json.load(f)
+[{"name": "Ice Spear", "type": "attack", "element": "ice", "damage": 15, "description": "Deals ice damage."},
+  {"name": "Stone Storm", "type": "attack", "element": "earth", "damage": 10, "description": "Hits all enemies."}]
+#random variables not sure of the actuall weapons right now as billy coded that
+def save_game(player, filename="save.json"):
+    with open(filename, "w") as f:
+        json.dump(player.to_dict(), f)
+
+def load_game(filename="save.json"):
+class CardViewer:
+    def __init__(self, root, card_info_frame):
+        self.label = tk.Label(card_info_frame, text="", wraplength=200, justify='left')
+        self.label.pack()
+
+    def show_card_info(self, card):
+        self.label.config(text=f"{card['name']}\n\n{card['description']}")
+
+def check_combo(self, played_cards):
+    if {"Ice Spear", "Stone Storm"}.issubset(set(played_cards)):
+        print("Combo triggered: Frozen Armor Crumble!")
+        return {"bonus_damage": 20}
+    return {}
+
+class CombatManager:
+    def __init__(self, player, enemy):
+        self.player = player
+        self.enemy = enemy
+
+    def play_card(self, card):
+# resolve card effect and check for combos
+#5677995
 # Class representing a looted goods that can restore health
 class LootedGoods:
     def __init__(self, name, restore_health=0):
