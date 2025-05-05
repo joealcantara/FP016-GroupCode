@@ -11,3 +11,73 @@ class ActionStack:
         if self.stack:
             return self.stack.pop()
         return None
+
+
+def play_card(self, card_index, game_state, target=None):
+    if 0 <= card_index < len(self.hand):
+        card = self.hand[card_index]
+
+       # STATUS RECORD FOR UNDO
+        self.history.push({
+            'type': 'play_card',
+            'card': card,
+            'card_index': card_index,
+            'target': target,
+            'player_health': self.health,
+            'target_health': target.health if target else None,
+            'player_stamina': self.stamina,
+            'player_defense': self.defense,
+            'status_effects': [str(e) for e in self.status_effects],
+            'fire_shield': self.fire_shield_active,
+            'ice_wall': self.ice_wall_active,
+            'lightning_reflect': self.lightning_reflect_active,
+            'damage_reduction': self.damage_reduction_active
+        })
+
+
+
+    def undo_last_action(self, game_state):
+        last_action = self.history.pop()
+        if not last_action:
+            print("No action to undo!")
+            return False
+
+        if last_action['type'] == 'play_card':
+            print(f"\nUNDO: Reverting last card play ({last_action['card'].name})")
+
+            # Restore card to hand
+            self.hand.insert(last_action['card_index'], last_action['card'])
+
+            # Restore stamina
+            self.stamina += last_action['card'].cost
+
+            # Restore player state
+            self.health = last_action['player_health']
+            self.defense = last_action['player_defense']
+            self.fire_shield_active = last_action['fire_shield']
+            self.ice_wall_active = last_action['ice_wall']
+            self.lightning_reflect_active = last_action['lightning_reflect']
+            self.damage_reduction_active = last_action['damage_reduction']
+
+            # Restore status effects
+            self.status_effects = [
+                eff for eff in self.status_effects
+                if str(eff) in last_action['status_effects']
+            ]
+
+            # Restore target health
+            if last_action['target']:
+                last_action['target'].health = last_action['target_health']
+
+            return True
+        return False
+
+
+
+choice = input("Enter card number (1-5), 'u' to undo, or 0 to end turn: ")
+if choice == '0':
+    break
+elif choice.lower() == 'u':  # Satır 501-503
+    current.undo_last_action(self)
+    current.show_hand()
+    continue
