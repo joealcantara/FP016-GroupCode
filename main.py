@@ -586,7 +586,51 @@ class Player:
                 elif choice == 'a':
                     self.armor.upgrade(attribute)
 5677995
+#Tree structure - skills progression
+class SkillNode:
+    def __init__(self, name, unlocked=False):
+        self.name = name
+        self.unlocked = unlocked
+        self.children = []
 
+    def add_child(self, child_node):
+        self.children.append(child_node)
+
+    def unlock(self):
+        if self.unlocked:
+            print(f"Skill '{self.name}' already unlocked.")
+            return
+        self.unlocked = True
+        print(f"Skill '{self.name}' has been unlocked!")
+
+    def display_tree(self, level=0):
+        indent = " " * (level * 4)
+        status = "✓" if self.unlocked else "✗"
+        print(f"{indent}{self.name} [{status}]")
+        for child in self.children:
+            child.display_tree(level + 1)
+
+
+#graph structure: game(world)map
+class WorldMap:
+    def __init__(self):
+        self.graph = {}
+
+    def add_location(self, location):
+        if location not in self.graph:
+            self.graph[location] = []
+
+    def connect_locations(self, loc1, loc2):
+        self.graph[loc1].append(loc2)
+        self.graph[loc2].append(loc1)  # i made this one Undirected for simplicity
+
+    def get_neighbors(self, location):
+        return self.graph.get(location, [])
+
+    def display_map(self):
+        for location, neighbors in self.graph.items():
+            print(f"{location} → {', '.join(neighbors)}")
+5677995
 5665548
 class Game:
     def __init__(self, base):
