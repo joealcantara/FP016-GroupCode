@@ -11,8 +11,8 @@ pygame.init()
 pygame.font.init()
 
 
-# Status effects class
-class StatusEffect:
+
+     class StatusEffect:
     def __init__(self, name, duration):
         self.name = name
         self.duration = duration
@@ -96,35 +96,6 @@ class SlowEffect(StatusEffect):
         target.can_act = False
 
 
-class Boss(Enemy):
-    def __init__(self, name, health, abilities=None, special_cards=None, phases=1):
-        super().__init__(name, health)
-        self.abilities = abilities if abilities else []
-        self.special_cards = special_cards if special_cards else []
-        self.max_health = health
-        self.phases = phases
-        self.current_phase = 1
-
-    def take_damage(self, amount):
-        super().take_damage(amount)
-        self.check_phase_change()
-
-    def check_phase_change(self):
-        phase_threshold = self.max_health * (1 - (self.current_phase / self.phases))
-        if self.health <= phase_threshold and self.current_phase < self.phases:
-            self.current_phase += 1
-            print(f"!!! {self.name} enters Phase {self.current_phase} !!!")
-            self.activate_phase_ability()
-
-    def activate_phase_ability(self):
-        pass
-
-    def get_special_card(self):
-        if self.special_cards:
-            return random.choice(self.special_cards)
-        return None
-
-# Special abilities class
 class SpecialAbilities:
     class ApplyBurn:
         def __init__(self, duration=2, damage_per_turn=5):
@@ -217,171 +188,6 @@ class SpecialAbilities:
             source.damage_reduction_active = (self.reduction_percentage / 100, self.duration)
 
 
-def create_mug_monster():
-    # Special Abilities
-    def ivy_attack(boss, target):
-        print("Mug Monster lashes out with ivy vines!")
-        target.take_damage(15)
-        target.apply_status_effect(PoisonEffect(2, [5, 10]))
-
-    def venomous_spawn(boss):
-        print("Mug Monster spawns venomous plants!")
-        boss.health += 20  # Heals hisself
-        return BurnEffect(3, 5)  # Applies burn to the opponent
-
-    def regrowth(boss):
-        heal_amount = boss.max_health * 0.2
-        boss.health = min(boss.max_health, boss.health + heal_amount)
-        print(f"Mug Monster regenerates {heal_amount} health!")
-
-    # Special Cards
-    call_from_nature = Card(
-        "Call from Nature",
-        "Attack",
-        2,
-        20,
-        0,
-        "Summons plants to attack (20 damage)",
-        ability=SpecialAbilities.ApplyPoison(2, [5, 5]),
-        tags=["Nature"]
-    )
-
-    guardian_bush = Card(
-        "Guardian Bush",
-        "Defense",
-        1,
-        0,
-        25,
-        "Creates a protective bush (25 block)",
-        ability=SpecialAbilities.ReduceIncomingDamage(1, 30),
-        tags=["Nature"]
-    )
-
-    mug_monster = Boss(
-        name="Mug Monster",
-        health=180,
-        abilities=[ivy_attack, venomous_spawn, regrowth],
-        special_cards=[call_from_nature, guardian_bush],
-        phases=2
-    )
-
-    # Phase transition ability
-    def phase2_ability():
-        print("Mug Monster's plants grow wildly!")
-        mug_monster.attributes.append("enhanced_regrowth")  # The amount of healing increases
-
-    mug_monster.activate_phase_ability = phase2_ability
-    return mug_monster
-
-
-def create_dragon():
-    # Special Abilities
-
-    def flame_breath(boss, target):
-        damage = 35 if boss.current_phase >= 2 else 25
-        print(f"Dragon breathes fire for {damage} damage!")
-        target.take_damage(damage)
-        target.apply_status_effect(BurnEffect(2, 10))
-
-    def wing_strokes(boss):
-        print("Dragon creates powerful wind with its wings!")
-        # Removes all defense and deals damage
-        return 15, "all"  #15 damage
-
-    # Special Cards
-    skin_of_dragon = Card(
-        "Skin of the Dragon",
-        "Defense",
-        0,  # free
-        0,
-        40,
-        "Gains 40 block and fire immunity",
-        ability=SpecialAbilities.BlockFireAttack(),
-        tags=["Dragon"]
-    )
-
-    soul_of_dragon = Card(
-        "Soul of the Dragon",
-        "Attack",
-        4,
-        50,
-        0,
-        "Ultimate dragon attack (50 damage, can be used once)",
-        tags=["Dragon", "Ultimate"],
-        one_time_use=True
-    )
-
-    dragon = Boss(
-        name="Ancient Dragon",
-        health=250,
-        abilities=[flame_breath, wing_strokes],
-        special_cards=[skin_of_dragon, soul_of_dragon],
-        phases=2
-    )
-
-    # Phase transition ability
-    def phase2_ability():
-        print("The dragon's ancient power awakens!")
-        dragon.attributes.append("enhanced_flames")  # Flame abilities are strengthened
-
-    dragon.activate_phase_ability = phase2_ability
-    return dragon
-
-
-def create_sea_monster():
-    # Special Abilities
-    def whirlpool(boss, target):
-        print("Sea Monster creates a whirlpool!")
-        target.take_damage(20)
-        target.apply_status_effect(SlowEffect(2))
-
-    def electro_shock(boss, target):
-        damage = random.choice([10, 20, 30])  # 10, 20, or 30 damage
-        print(f"Sea Monster delivers an electro shock for {damage} damage!")
-        target.take_damage(damage)
-        if damage >= 20:
-            target.apply_status_effect(StunEffect(1))
-
-    # Special Cards
-    nature_of_water = Card(
-        "Nature of the Water",
-        "Defense",
-        1,
-        0,
-        0,
-        "Heals 30 HP and removes all debuffs",
-        ability=SpecialAbilities.ClearPoisonAndHeal(30),
-        tags=["Water"]
-    )
-
-    sea_monster_teeth = Card(
-        "Sea Monster Teeth",
-        "Attack",
-        3,
-        40,
-        0,
-        "Devastating bite attack (40 damage, single use)",
-        tags=["Water", "Ultimate"],
-        one_time_use=True
-    )
-
-    sea_monster = Boss(
-        name="Abyssal Sea Monster",
-        health=220,
-        abilities=[whirlpool, electro_shock],
-        special_cards=[nature_of_water, sea_monster_teeth],
-        phases=2
-    )
-
-    # Phase Transition Ability
-    def phase2_ability():
-        print("The sea monster summons the ocean's fury!")
-        sea_monster.attributes.append("tidal_wave")  # Enhances water-based attacks
-
-    sea_monster.activate_phase_ability = phase2_ability
-    return sea_monster
-
-# Card class
 class Card:
     def __init__(self, name, card_type, cost=0, damage=0, block=0, description="", ability=None, tags=None):
         self.name = name
@@ -414,107 +220,425 @@ class Card:
             print(f"{player.name} gains {self.block} defense.")
 
 
-# Elemental attack cards
+# Card Definitions
 flame_sword_card = Card(
-    name="Flame Sword",
-    card_type="Attack",
-    cost=2,
-    damage=15,
-    description="Burns the opponent for 2 turns (+5 damage per turn)",
+    name="Flame Sword", card_type="Attack", cost=2, damage=15,
+    description="Burns opponent for 2 turns (+5 damage/turn)",
     ability=SpecialAbilities.ApplyBurn(duration=2, damage_per_turn=5),
-    tags=["Fire"]
-)
+    tags=["Fire"])
 
 ice_spear_card = Card(
-    name="Ice Spear",
-    card_type="Attack",
-    cost=1,
-    damage=10,
+    name="Ice Spear", card_type="Attack", cost=1, damage=10,
     description="Prevents opponent from attacking next turn",
     ability=SpecialAbilities.PreventAttackNextTurn(),
-    tags=["Ice"]
-)
+    tags=["Ice"])
 
 lightning_strike_card = Card(
-    name="Lightning Strike",
-    card_type="Attack",
-    cost=2,
-    damage=20,
-    description="50% chance to stun the opponent for 1 turn",
+    name="Lightning Strike", card_type="Attack", cost=2, damage=20,
+    description="50% chance to stun opponent for 1 turn",
     ability=SpecialAbilities.ApplyStun(chance=0.5),
-    tags=["Electric"]
-)
+    tags=["Electric"])
 
 poison_arrow_card = Card(
-    name="Poison Arrow",
-    card_type="Attack",
-    cost=1,
-    damage=12,
-    description="Poisons the opponent for 3 turns (5 → 10 → 15 damage)",
+    name="Poison Arrow", card_type="Attack", cost=1, damage=12,
+    description="Poisons opponent for 3 turns (5→10→15 damage)",
     ability=SpecialAbilities.ApplyPoison(duration=3, damage_sequence=[5, 10, 15]),
-    tags=["Poison"]
-)
+    tags=["Poison"])
 
 stone_storm_card = Card(
-    name="Stone Storm",
-    card_type="Attack",
-    cost=2,
-    damage=18,
+    name="Stone Storm", card_type="Attack", cost=2, damage=18,
     description="Reduces opponent's defense by 30% for 1 turn",
     ability=SpecialAbilities.ReduceOpponentDefense(duration=1, reduction_percentage=30),
-    tags=["Earth"]
-)
+    tags=["Earth"])
 
-# Defense cards
 fire_shield_card = Card(
-    name="Fire Shield",
-    card_type="Defense",
-    cost=2,
-    block=20,
+    name="Fire Shield", card_type="Defense", cost=2, block=20,
     description="Completely blocks fire attacks",
     ability=SpecialAbilities.BlockFireAttack(),
-    tags=["Fire"]
-)
+    tags=["Fire"])
 
 ice_wall_card = Card(
-    name="Ice Wall",
-    card_type="Defense",
-    cost=1,
-    block=15,
-    description="Blocks ice attacks and slows the opponent",
+    name="Ice Wall", card_type="Defense", cost=1, block=15,
+    description="Blocks ice attacks and slows opponent",
     ability=SpecialAbilities.BlockIceAttackAndSlow(),
-    tags=["Ice"]
-)
+    tags=["Ice"])
 
 lightning_reflect_card = Card(
-    name="Lightning Reflect",
-    card_type="Defense",
-    cost=1,
-    block=10,
+    name="Lightning Reflect", card_type="Defense", cost=1, block=10,
     description="Reflects 50% of electric damage",
     ability=SpecialAbilities.ReflectElectricDamage(reflect_percentage=0.5),
-    tags=["Electric"]
-)
+    tags=["Electric"])
 
 poison_cleanse_card = Card(
-    name="Poison Cleanse",
-    card_type="Defense",
-    cost=1,
-    block=0,
+    name="Poison Cleanse", card_type="Defense", cost=1, block=0,
     description="Clears poison and heals 5 HP",
     ability=SpecialAbilities.ClearPoisonAndHeal(heal_amount=5),
-    tags=["Poison"]
-)
+    tags=["Poison"])
 
 stone_armor_card = Card(
-    name="Stone Armor",
-    card_type="Defense",
-    cost=3,
-    block=25,
+    name="Stone Armor", card_type="Defense", cost=3, block=25,
     description="Reduces incoming damage by 50% for 2 turns",
     ability=SpecialAbilities.ReduceIncomingDamage(duration=2, reduction_percentage=50),
-    tags=["Earth"]
-)
+    tags=["Earth"])
+
+
+class ActionHistory:
+    def __init__(self):
+        self.stack = []
+
+    def push(self, action):
+        self.stack.append(action)
+
+    def pop(self):
+        return self.stack.pop() if self.stack else None
+
+
+class Player:
+    def __init__(self, name="Player", max_health=100):
+        self.name = name
+        self.max_health = max_health
+        self.health = max_health
+        self.defense = 0
+        self.deck = self.create_default_deck()
+        self.hand = []
+        self.stamina = 0
+        self.max_stamina = 10
+        self.status_effects = []
+        self.can_act = True
+        self.fire_shield_active = False
+        self.ice_wall_active = False
+        self.lightning_reflect_active = 0
+        self.damage_reduction_active = (0, 0)
+        self.history = ActionHistory()
+
+    def create_default_deck(self):
+        default_deck = []
+        cards = [
+            flame_sword_card, ice_spear_card, lightning_strike_card,
+            poison_arrow_card, stone_storm_card, fire_shield_card,
+            ice_wall_card, lightning_reflect_card, poison_cleanse_card,
+            stone_armor_card
+        ]
+        for _ in range(3):
+            default_deck.extend(cards)
+        random.shuffle(default_deck)
+        return default_deck
+
+    def draw_card(self):
+        if len(self.hand) < 7 and self.deck:
+            card = self.deck.pop()
+            self.hand.append(card)
+            print(f"{self.name} drew {card.name} card.")
+            return card
+        return None
+
+    def play_card(self, card_index, game_state, target=None):
+        if 0 <= card_index < len(self.hand):
+            card = self.hand[card_index]
+
+            # Save state before playing
+            self.history.push({
+                'type': 'play_card',
+                'card': card,
+                'card_index': card_index,
+                'target': target,
+                'player_health': self.health,
+                'target_health': target.health if target else None,
+                'player_stamina': self.stamina,
+                'player_defense': self.defense,
+                'status_effects': [str(e) for e in self.status_effects],
+                'fire_shield': self.fire_shield_active,
+                'ice_wall': self.ice_wall_active,
+                'lightning_reflect': self.lightning_reflect_active,
+                'damage_reduction': self.damage_reduction_active
+            })
+
+            if self.stamina >= card.cost:
+                self.stamina -= card.cost
+                card.play(game_state, self, target)
+                self.hand.pop(card_index)
+                return True
+            else:
+                print("Not enough AP!")
+        return False
+
+    def undo_last_action(self, game_state):
+        last_action = self.history.pop()
+        if not last_action:
+            print("No action to undo!")
+            return False
+
+        if last_action['type'] == 'play_card':
+            print(f"\nUNDO: Reverting last card play ({last_action['card'].name})")
+
+            # Restore card to hand
+            self.hand.insert(last_action['card_index'], last_action['card'])
+
+            # Restore stamina
+            self.stamina += last_action['card'].cost
+
+            # Restore player state
+            self.health = last_action['player_health']
+            self.defense = last_action['player_defense']
+            self.fire_shield_active = last_action['fire_shield']
+            self.ice_wall_active = last_action['ice_wall']
+            self.lightning_reflect_active = last_action['lightning_reflect']
+            self.damage_reduction_active = last_action['damage_reduction']
+
+            # Restore status effects
+            self.status_effects = [
+                eff for eff in self.status_effects
+                if str(eff) in last_action['status_effects']
+            ]
+
+            # Restore target health
+            if last_action['target']:
+                last_action['target'].health = last_action['target_health']
+
+            return True
+        return False
+
+    def take_damage(self, amount, damage_type="Physical"):
+        if damage_type == "Fire" and self.fire_shield_active:
+            print("Fire attack blocked!")
+            return
+        if damage_type == "Ice" and self.ice_wall_active:
+            print("Ice attack blocked!")
+            return
+
+        final_damage = amount
+        if self.damage_reduction_active[0] > 0:
+            reduction = self.damage_reduction_active[0]
+            final_damage = int(final_damage * (1 - reduction))
+            print(f"Damage reduced by {reduction * 100}%.")
+
+        if damage_type == "Electric" and self.lightning_reflect_active > 0:
+            reflected = int(final_damage * self.lightning_reflect_active)
+            final_damage -= reflected
+            print(f"{self.lightning_reflect_active * 100}% damage reflected.")
+
+        self.health -= max(0, final_damage - self.defense)
+        print(f"{self.name} takes {max(0, final_damage - self.defense)} damage. Remaining HP: {self.health}")
+
+    def heal(self, amount):
+        self.health = min(self.health + amount, self.max_health)
+        print(f"{self.name} heals {amount} HP. New HP: {self.health}")
+
+    def apply_status_effect(self, effect):
+        self.status_effects.append(effect)
+        effect.apply(self)
+
+    def remove_status_effect(self, effect_name):
+        for effect in self.status_effects[:]:
+            if effect.name == effect_name:
+                if hasattr(effect, 'remove'):
+                    effect.remove(self)
+                self.status_effects.remove(effect)
+                print(f"{effect_name} effect removed.")
+
+    def has_status_effect(self, effect_name):
+        return any(effect.name == effect_name for effect in self.status_effects)
+
+    def begin_turn(self):
+        self.can_act = True
+        self.stamina = min(self.stamina + 3, self.max_stamina)
+        self.defense = 0
+        self.fire_shield_active = False
+        self.ice_wall_active = False
+        self.draw_card()
+        print(f"\n{self.name}'s turn begins. AP: {self.stamina}")
+
+    def end_turn(self):
+        for effect in self.status_effects[:]:
+            if effect.tick(self):
+                self.remove_status_effect(effect.name)
+
+        if self.damage_reduction_active[1] > 0:
+            duration_left = self.damage_reduction_active[1] - 1
+            self.damage_reduction_active = (self.damage_reduction_active[0], duration_left)
+            if duration_left <= 0:
+                print("Damage reduction effect ended.")
+                self.damage_reduction_active = (0, 0)
+
+        print(f"{self.name}'s turn ends.")
+
+    def show_hand(self):
+        print(f"\n{self.name}'s hand:")
+        for i, card in enumerate(self.hand):
+            print(f"{i + 1}. {card}")
+
+
+class AIPlayer(Player):
+    def __init__(self, name="Computer", max_health=100):
+        super().__init__(name, max_health)
+        self.difficulty = "medium"  # easy, medium, hard
+
+    def make_decision(self, game_state):
+        opponent = game_state.opponent()
+
+        # Check defensive cards first
+        defense_cards = [card for card in self.hand if card.card_type == "Defense"]
+        attack_cards = [card for card in self.hand if card.card_type == "Attack"]
+
+        # Emergency control (low health)
+        if self.health < 0.3 * self.max_health:
+            # Use a healing card if available
+            heal_card = next((card for card in defense_cards if "heal" in card.name.lower()), None)
+            if heal_card and heal_card.cost <= self.stamina:
+                return self.play_card(self.hand.index(heal_card), game_state)
+
+            # Use defense card
+            if defense_cards:
+                # Choose the best defense card (highest block)
+                best_defense = max(defense_cards, key=lambda x: x.block)
+                if best_defense.cost <= self.stamina:
+                    return self.play_card(self.hand.index(best_defense), game_state)
+
+        # Make moves according to your opponent's situation
+        if opponent.status_effects:
+            # If the opponent already has a status effect, focus on dealing direct damage
+            if attack_cards:
+                # Choose the card with the highest damage
+                best_attack = max(attack_cards, key=lambda x: x.damage)
+                if best_attack.cost <= self.stamina:
+                    return self.play_card(self.hand.index(best_attack), game_state, opponent)
+        else:
+            # Prefer cards that apply status effects
+            status_attack_cards = [card for card in attack_cards if card.ability is not None]
+            if status_attack_cards:
+                # Select a random status effect card
+                selected_card = random.choice(status_attack_cards)
+                if selected_card.cost <= self.stamina:
+                    return self.play_card(self.hand.index(selected_card), game_state, opponent)
+
+        # If not enough AP, pass
+        if self.stamina < min(card.cost for card in self.hand if card.cost > 0):
+            return False
+
+        # Play a random card
+        playable_cards = [card for card in self.hand if card.cost <= self.stamina]
+        if playable_cards:
+            # Strategy according to difficulty level
+            if self.difficulty == "easy":
+                card = random.choice(playable_cards)
+            elif self.difficulty == "medium":
+                # Choose better cards
+                card = max(playable_cards, key=lambda x: x.damage if x.card_type == "Attack" else x.block)
+            else:  # hard
+                # Check combinations
+                if any(eff.name == "Defense Reduction" for eff in opponent.status_effects):
+                    # If defense is low, deal high damage
+                    high_dmg = max((c for c in playable_cards if c.card_type == "Attack"),
+                                   key=lambda x: x.damage, default=None)
+                    if high_dmg:
+                        card = high_dmg
+                else:
+                    # First lower your defense, then attack
+                    defense_reducer = next((c for c in playable_cards
+                                            if "ReduceOpponentDefense" in str(c.ability)), None)
+                    if defense_reducer:
+                        card = defense_reducer
+                    else:
+                        card = max(playable_cards, key=lambda x: x.damage if x.card_type == "Attack" else x.block)
+
+            return self.play_card(self.hand.index(card), game_state, opponent if card.card_type == "Attack" else None)
+
+        return False
+
+
+class GameState:
+    def __init__(self, player1, player2):
+        self.players = [player1, player2]
+        self.current_player_index = 0
+        self.turn = 1
+
+    def current_player(self):
+        return self.players[self.current_player_index]
+
+    def opponent(self):
+        return self.players[1 - self.current_player_index]
+
+    def switch_player(self):
+        self.current_player_index = 1 - self.current_player_index
+
+    def play_turn(self):
+        current = self.current_player()
+        opponent = self.opponent()
+
+        current.begin_turn()
+
+        if isinstance(current, AIPlayer):
+            print(f"\n{current.name}'s turn:")
+            current.show_hand()
+            current.make_decision(self)
+        else:
+            current.show_hand()
+            if current.hand:
+                played = False
+                while not played:
+                    try:
+                        choice = input("Enter card number (1-5), 'u' to undo, or 0 to end turn: ")
+                        if choice == '0':
+                            break
+                        elif choice.lower() == 'u':
+                            current.undo_last_action(self)
+                            current.show_hand()
+                            continue
+
+                        card_index = int(choice) - 1
+                        played = current.play_card(card_index, self, opponent)
+                    except (ValueError, IndexError):
+                        print("Invalid input!")
+
+        current.end_turn()
+        self.switch_player()
+        self.turn += 1
+
+    def is_game_over(self):
+        return any(player.health <= 0 for player in self.players)
+
+    def display_status(self):
+        print("\n" + "=" * 40)
+        print(f"Turn {self.turn}")
+        for player in self.players:
+            status = f"{player.name}: HP {player.health}/{player.max_health}"
+            if player.status_effects:
+                status += f" | Effects: {', '.join(str(effect) for effect in player.status_effects)}"
+            print(status)
+        print("=" * 40)
+
+
+def main():
+    print("Welcome to REDEMPTION!")
+    player_name = input("Please enter your name: ")
+
+    difficulty = input("Select AI difficulty (easy, medium, hard): ").lower()
+    while difficulty not in ["easy", "medium", "hard"]:
+        difficulty = input("Invalid difficulty. Please choose easy, medium or hard: ").lower()
+
+    player = Player(player_name)
+    computer = AIPlayer("Computer")
+    computer.difficulty = difficulty
+
+    game = GameState(player, computer)
+
+    # Starting hand
+    for _ in range(5):
+        player.draw_card()
+        computer.draw_card()
+
+    while not game.is_game_over():
+        game.display_status()
+        game.play_turn()
+        time.sleep(1)
+
+    game.display_status()
+    winner = player if player.health > 0 else computer
+    print(f"\nGame over! Winner: {winner.name}")
+
+
+if __name__ == "__main__":
+    main()
 # Screen setup
 WIDTH, HEIGHT = 1024, 768
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
