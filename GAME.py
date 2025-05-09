@@ -10,6 +10,511 @@ import math
 pygame.init()
 pygame.font.init()
 
+
+# Status effects class
+class StatusEffect:
+    def __init__(self, name, duration):
+        self.name = name
+        self.duration = duration
+
+    def apply(self, target):
+        pass
+
+    def tick(self, target):
+        self.duration -= 1
+        return self.duration <= 0
+
+    def __str__(self):
+        return f"{self.name} ({self.duration} turns)"
+
+
+class BurnEffect(StatusEffect):
+    def __init__(self, duration, damage_per_turn):
+        super().__init__("Burn", duration)
+        self.damage_per_turn = damage_per_turn
+
+    def apply(self, target):
+        print(f"{target.name} is burning!")
+        target.take_damage(self.damage_per_turn, "Fire")
+
+    def tick(self, target):
+        print(f"{target.name} takes {self.damage_per_turn} burn damage.")
+        target.take_damage(self.damage_per_turn, "Fire")
+        return super().tick(target)
+
+
+class StunEffect(StatusEffect):
+    def __init__(self, duration=1):
+        super().__init__("Stun", duration)
+
+    def apply(self, target):
+        print(f"{target.name} is stunned and can't move!")
+        target.can_act = False
+
+
+class PoisonEffect(StatusEffect):
+    def __init__(self, duration, damage_sequence):
+        super().__init__("Poison", duration)
+        self.damage_sequence = list(damage_sequence)
+        self.current_tick = 0
+
+    def apply(self, target):
+        print(f"{target.name} is poisoned!")
+        self.tick(target)
+
+    def tick(self, target):
+        if self.current_tick < len(self.damage_sequence):
+            damage = self.damage_sequence[self.current_tick]
+            print(f"{target.name} takes {damage} poison damage.")
+            target.take_damage(damage, "Poison")
+            self.current_tick += 1
+        return super().tick(target)
+
+
+class DefenseReductionEffect(StatusEffect):
+    def __init__(self, duration, reduction_percentage):
+        super().__init__("Defense Reduction", duration)
+        self.reduction_percentage = reduction_percentage
+        self.original_defense = 0
+
+    def apply(self, target):
+        print(f"{target.name}'s defense is reduced by {self.reduction_percentage}%!")
+        self.original_defense = target.defense
+        target.defense -= int(target.defense * (self.reduction_percentage / 100))
+
+    def remove(self, target):
+        target.defense = self.original_defense
+        print(f"{target.name}'s defense returns to normal.")
+
+
+class SlowEffect(StatusEffect):
+    def __init__(self, duration=1):
+        super().__init__("Slow", duration)
+
+    def apply(self, target):
+        print(f"{target.name} is slowed!")
+        target.can_act = False
+
+
+class Boss(Enemy):
+    def __init__(self, name, health, abilities=None, special_cards=None, phases=1):
+        super().__init__(name, health)
+        self.abilities = abilities if abilities else []
+        self.special_cards = special_cards if special_cards else []
+        self.max_health = health
+        self.phases = phases
+        self.current_phase = 1
+
+    def take_damage(self, amount):
+        super().take_damage(amount)
+        self.check_phase_change()
+
+    def check_phase_change(self):
+        phase_threshold = self.max_health * (1 - (self.current_phase / self.phases))
+        if self.health <= phase_threshold and self.current_phase < self.phases:
+            self.current_phase += 1
+            print(f"!!! {self.name} enters Phase {self.current_phase} !!!")
+            self.activate_phase_ability()
+
+    def activate_phase_ability(self):
+        pass
+
+    def get_special_card(self):
+        if self.special_cards:
+            return random.choice(self.special_cards)
+        return None
+
+# Special abilities class
+class SpecialAbilities:
+    class ApplyBurn:
+        def __init__(self, duration=2, damage_per_turn=5):
+            self.duration = duration
+            self.damage_per_turn = damage_per_turn
+
+        def activate(self, game_state, source, target):
+            if target:
+                burn = BurnEffect(self.duration, self.damage_per_turn)
+                target.apply_status_effect(burn)
+
+    class PreventAttackNextTurn:
+        def activate(self, game_state, source, target):
+            if target:
+                stun = StunEffect(duration=1)
+                target.apply_status_effect(stun)
+
+    class ApplyStun:
+        def __init__(self, chance=0.5, duration=1):
+            self.chance = chance
+            self.duration = duration
+
+        def activate(self, game_state, source, target):
+            if target and random.random() < self.chance:
+                stun = StunEffect(self.duration)
+                target.apply_status_effect(stun)
+                print(f"{target.name} is stunned!")
+            else:
+                print(f"{target.name} resisted the stun.")
+
+    class ApplyPoison:
+        def __init__(self, duration=3, damage_sequence=[5, 10, 15]):
+            self.duration = duration
+            self.damage_sequence = damage_sequence
+
+        def activate(self, game_state, source, target):
+            if target:
+                poison = PoisonEffect(self.duration, self.damage_sequence)
+                target.apply_status_effect(poison)
+
+    class ReduceOpponentDefense:
+        def __init__(self, duration=1, reduction_percentage=30):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, game_state, source, target):
+            if target:
+                defense_reduction = DefenseReductionEffect(self.duration, self.reduction_percentage)
+                target.apply_status_effect(defense_reduction)
+
+    class BlockFireAttack:
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} blocks fire attacks.")
+            source.fire_shield_active = True
+
+    class BlockIceAttackAndSlow:
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} blocks ice attacks and slows the opponent.")
+            source.ice_wall_active = True
+            if target:
+                slow = SlowEffect(duration=1)
+                target.apply_status_effect(slow)
+
+    class ReflectElectricDamage:
+        def __init__(self, reflect_percentage=0.5):
+            self.reflect_percentage = reflect_percentage
+
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} reflects {int(self.reflect_percentage * 100)}% of electric damage.")
+            source.lightning_reflect_active = self.reflect_percentage
+
+    class ClearPoisonAndHeal:
+        def __init__(self, heal_amount=5):
+            self.heal_amount = heal_amount
+
+        def activate(self, game_state, source, target=None):
+            if source.has_status_effect("Poison"):
+                source.remove_status_effect("Poison")
+                print(f"Poison cleared from {source.name}.")
+            source.heal(self.heal_amount)
+            print(f"{source.name} healed {self.heal_amount} HP.")
+
+    class ReduceIncomingDamage:
+        def __init__(self, duration=2, reduction_percentage=50):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} reduces incoming damage by {self.reduction_percentage}%.")
+            source.damage_reduction_active = (self.reduction_percentage / 100, self.duration)
+
+
+def create_mug_monster():
+    # Special Abilities
+    def ivy_attack(boss, target):
+        print("Mug Monster lashes out with ivy vines!")
+        target.take_damage(15)
+        target.apply_status_effect(PoisonEffect(2, [5, 10]))
+
+    def venomous_spawn(boss):
+        print("Mug Monster spawns venomous plants!")
+        boss.health += 20  # Heals hisself
+        return BurnEffect(3, 5)  # Applies burn to the opponent
+
+    def regrowth(boss):
+        heal_amount = boss.max_health * 0.2
+        boss.health = min(boss.max_health, boss.health + heal_amount)
+        print(f"Mug Monster regenerates {heal_amount} health!")
+
+    # Special Cards
+    call_from_nature = Card(
+        "Call from Nature",
+        "Attack",
+        2,
+        20,
+        0,
+        "Summons plants to attack (20 damage)",
+        ability=SpecialAbilities.ApplyPoison(2, [5, 5]),
+        tags=["Nature"]
+    )
+
+    guardian_bush = Card(
+        "Guardian Bush",
+        "Defense",
+        1,
+        0,
+        25,
+        "Creates a protective bush (25 block)",
+        ability=SpecialAbilities.ReduceIncomingDamage(1, 30),
+        tags=["Nature"]
+    )
+
+    mug_monster = Boss(
+        name="Mug Monster",
+        health=180,
+        abilities=[ivy_attack, venomous_spawn, regrowth],
+        special_cards=[call_from_nature, guardian_bush],
+        phases=2
+    )
+
+    # Phase transition ability
+    def phase2_ability():
+        print("Mug Monster's plants grow wildly!")
+        mug_monster.attributes.append("enhanced_regrowth")  # The amount of healing increases
+
+    mug_monster.activate_phase_ability = phase2_ability
+    return mug_monster
+
+
+def create_dragon():
+    # Special Abilities
+
+    def flame_breath(boss, target):
+        damage = 35 if boss.current_phase >= 2 else 25
+        print(f"Dragon breathes fire for {damage} damage!")
+        target.take_damage(damage)
+        target.apply_status_effect(BurnEffect(2, 10))
+
+    def wing_strokes(boss):
+        print("Dragon creates powerful wind with its wings!")
+        # Removes all defense and deals damage
+        return 15, "all"  #15 damage
+
+    # Special Cards
+    skin_of_dragon = Card(
+        "Skin of the Dragon",
+        "Defense",
+        0,  # free
+        0,
+        40,
+        "Gains 40 block and fire immunity",
+        ability=SpecialAbilities.BlockFireAttack(),
+        tags=["Dragon"]
+    )
+
+    soul_of_dragon = Card(
+        "Soul of the Dragon",
+        "Attack",
+        4,
+        50,
+        0,
+        "Ultimate dragon attack (50 damage, can be used once)",
+        tags=["Dragon", "Ultimate"],
+        one_time_use=True
+    )
+
+    dragon = Boss(
+        name="Ancient Dragon",
+        health=250,
+        abilities=[flame_breath, wing_strokes],
+        special_cards=[skin_of_dragon, soul_of_dragon],
+        phases=2
+    )
+
+    # Phase transition ability
+    def phase2_ability():
+        print("The dragon's ancient power awakens!")
+        dragon.attributes.append("enhanced_flames")  # Flame abilities are strengthened
+
+    dragon.activate_phase_ability = phase2_ability
+    return dragon
+
+
+def create_sea_monster():
+    # Special Abilities
+    def whirlpool(boss, target):
+        print("Sea Monster creates a whirlpool!")
+        target.take_damage(20)
+        target.apply_status_effect(SlowEffect(2))
+
+    def electro_shock(boss, target):
+        damage = random.choice([10, 20, 30])  # 10, 20, or 30 damage
+        print(f"Sea Monster delivers an electro shock for {damage} damage!")
+        target.take_damage(damage)
+        if damage >= 20:
+            target.apply_status_effect(StunEffect(1))
+
+    # Special Cards
+    nature_of_water = Card(
+        "Nature of the Water",
+        "Defense",
+        1,
+        0,
+        0,
+        "Heals 30 HP and removes all debuffs",
+        ability=SpecialAbilities.ClearPoisonAndHeal(30),
+        tags=["Water"]
+    )
+
+    sea_monster_teeth = Card(
+        "Sea Monster Teeth",
+        "Attack",
+        3,
+        40,
+        0,
+        "Devastating bite attack (40 damage, single use)",
+        tags=["Water", "Ultimate"],
+        one_time_use=True
+    )
+
+    sea_monster = Boss(
+        name="Abyssal Sea Monster",
+        health=220,
+        abilities=[whirlpool, electro_shock],
+        special_cards=[nature_of_water, sea_monster_teeth],
+        phases=2
+    )
+
+    # Phase Transition Ability
+    def phase2_ability():
+        print("The sea monster summons the ocean's fury!")
+        sea_monster.attributes.append("tidal_wave")  # Enhances water-based attacks
+
+    sea_monster.activate_phase_ability = phase2_ability
+    return sea_monster
+
+# Card class
+class Card:
+    def __init__(self, name, card_type, cost=0, damage=0, block=0, description="", ability=None, tags=None):
+        self.name = name
+        self.card_type = card_type
+        self.cost = cost
+        self.damage = damage
+        self.block = block
+        self.description = description
+        self.ability = ability
+        self.tags = tags if tags is not None else []
+
+    def __str__(self):
+        info = f"{self.name} ({self.card_type}) - Cost: {self.cost}"
+        if self.damage > 0:
+            info += f", Damage: {self.damage}"
+        if self.block > 0:
+            info += f", Block: {self.block}"
+        info += f"\nDescription: {self.description}"
+        return info
+
+    def play(self, game_state, player, target=None):
+        print(f"{player.name} played {self.name} card.")
+        if self.ability:
+            self.ability.activate(game_state, player, target)
+        if self.damage > 0 and target:
+            print(f"{target.name} takes {self.damage} damage.")
+            target.take_damage(self.damage)
+        if self.block > 0:
+            player.defense += self.block
+            print(f"{player.name} gains {self.block} defense.")
+
+
+# Elemental attack cards
+flame_sword_card = Card(
+    name="Flame Sword",
+    card_type="Attack",
+    cost=2,
+    damage=15,
+    description="Burns the opponent for 2 turns (+5 damage per turn)",
+    ability=SpecialAbilities.ApplyBurn(duration=2, damage_per_turn=5),
+    tags=["Fire"]
+)
+
+ice_spear_card = Card(
+    name="Ice Spear",
+    card_type="Attack",
+    cost=1,
+    damage=10,
+    description="Prevents opponent from attacking next turn",
+    ability=SpecialAbilities.PreventAttackNextTurn(),
+    tags=["Ice"]
+)
+
+lightning_strike_card = Card(
+    name="Lightning Strike",
+    card_type="Attack",
+    cost=2,
+    damage=20,
+    description="50% chance to stun the opponent for 1 turn",
+    ability=SpecialAbilities.ApplyStun(chance=0.5),
+    tags=["Electric"]
+)
+
+poison_arrow_card = Card(
+    name="Poison Arrow",
+    card_type="Attack",
+    cost=1,
+    damage=12,
+    description="Poisons the opponent for 3 turns (5 → 10 → 15 damage)",
+    ability=SpecialAbilities.ApplyPoison(duration=3, damage_sequence=[5, 10, 15]),
+    tags=["Poison"]
+)
+
+stone_storm_card = Card(
+    name="Stone Storm",
+    card_type="Attack",
+    cost=2,
+    damage=18,
+    description="Reduces opponent's defense by 30% for 1 turn",
+    ability=SpecialAbilities.ReduceOpponentDefense(duration=1, reduction_percentage=30),
+    tags=["Earth"]
+)
+
+# Defense cards
+fire_shield_card = Card(
+    name="Fire Shield",
+    card_type="Defense",
+    cost=2,
+    block=20,
+    description="Completely blocks fire attacks",
+    ability=SpecialAbilities.BlockFireAttack(),
+    tags=["Fire"]
+)
+
+ice_wall_card = Card(
+    name="Ice Wall",
+    card_type="Defense",
+    cost=1,
+    block=15,
+    description="Blocks ice attacks and slows the opponent",
+    ability=SpecialAbilities.BlockIceAttackAndSlow(),
+    tags=["Ice"]
+)
+
+lightning_reflect_card = Card(
+    name="Lightning Reflect",
+    card_type="Defense",
+    cost=1,
+    block=10,
+    description="Reflects 50% of electric damage",
+    ability=SpecialAbilities.ReflectElectricDamage(reflect_percentage=0.5),
+    tags=["Electric"]
+)
+
+poison_cleanse_card = Card(
+    name="Poison Cleanse",
+    card_type="Defense",
+    cost=1,
+    block=0,
+    description="Clears poison and heals 5 HP",
+    ability=SpecialAbilities.ClearPoisonAndHeal(heal_amount=5),
+    tags=["Poison"]
+)
+
+stone_armor_card = Card(
+    name="Stone Armor",
+    card_type="Defense",
+    cost=3,
+    block=25,
+    description="Reduces incoming damage by 50% for 2 turns",
+    ability=SpecialAbilities.ReduceIncomingDamage(duration=2, reduction_percentage=50),
+    tags=["Earth"]
+)
 # Screen setup
 WIDTH, HEIGHT = 1024, 768
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
