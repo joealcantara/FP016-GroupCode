@@ -1,0 +1,652 @@
+
+import random
+import time
+
+
+class StatusEffect:
+    def __init__(self, name, duration):
+        self.name = name
+        self.duration = duration
+
+    def apply(self, target):
+        pass
+
+    def tick(self, target):
+        self.duration -= 1
+        return self.duration <= 0
+
+    def __str__(self):
+        return f"{self.name} ({self.duration} turns)"
+
+
+class BurnEffect(StatusEffect):
+    def __init__(self, duration, damage_per_turn):
+        super().__init__("Burn", duration)
+        self.damage_per_turn = damage_per_turn
+
+    def apply(self, target):
+        print(f"{target.name} is burning!")
+        target.take_damage(self.damage_per_turn, "Fire")
+
+    def tick(self, target):
+        print(f"{target.name} takes {self.damage_per_turn} burn damage.")
+        target.take_damage(self.damage_per_turn, "Fire")
+        return super().tick(target)
+
+
+class StunEffect(StatusEffect):
+    def __init__(self, duration=1):
+        super().__init__("Stun", duration)
+
+    def apply(self, target):
+        print(f"{target.name} is stunned and can't move!")
+        target.can_act = False
+
+
+class PoisonEffect(StatusEffect):
+    def __init__(self, duration, damage_sequence):
+        super().__init__("Poison", duration)
+        self.damage_sequence = list(damage_sequence)
+        self.current_tick = 0
+
+    def apply(self, target):
+        print(f"{target.name} is poisoned!")
+        self.tick(target)
+
+    def tick(self, target):
+        if self.current_tick < len(self.damage_sequence):
+            damage = self.damage_sequence[self.current_tick]
+            print(f"{target.name} takes {damage} poison damage.")
+            target.take_damage(damage, "Poison")
+            self.current_tick += 1
+        return super().tick(target)
+
+
+class DefenseReductionEffect(StatusEffect):
+    def __init__(self, duration, reduction_percentage):
+        super().__init__("Defense Reduction", duration)
+        self.reduction_percentage = reduction_percentage
+        self.original_defense = 0
+
+    def apply(self, target):
+        print(f"{target.name}'s defense is reduced by {self.reduction_percentage}%!")
+        self.original_defense = target.defense
+        target.defense -= int(target.defense * (self.reduction_percentage / 100))
+
+    def remove(self, target):
+        target.defense = self.original_defense
+        print(f"{target.name}'s defense returns to normal.")
+
+
+class SlowEffect(StatusEffect):
+    def __init__(self, duration=1):
+        super().__init__("Slow", duration)
+
+    def apply(self, target):
+        print(f"{target.name} is slowed!")
+        target.can_act = False
+
+
+class SpecialAbilities:
+    class ApplyBurn:
+        def __init__(self, duration=2, damage_per_turn=5):
+            self.duration = duration
+            self.damage_per_turn = damage_per_turn
+
+        def activate(self, game_state, source, target):
+            if target:
+                burn = BurnEffect(self.duration, self.damage_per_turn)
+                target.apply_status_effect(burn)
+
+    class PreventAttackNextTurn:
+        def activate(self, game_state, source, target):
+            if target:
+                stun = StunEffect(duration=1)
+                target.apply_status_effect(stun)
+
+    class ApplyStun:
+        def __init__(self, chance=0.5, duration=1):
+            self.chance = chance
+            self.duration = duration
+
+        def activate(self, game_state, source, target):
+            if target and random.random() < self.chance:
+                stun = StunEffect(self.duration)
+                target.apply_status_effect(stun)
+                print(f"{target.name} is stunned!")
+            else:
+                print(f"{target.name} resisted the stun.")
+
+    class ApplyPoison:
+        def __init__(self, duration=3, damage_sequence=[5, 10, 15]):
+            self.duration = duration
+            self.damage_sequence = damage_sequence
+
+        def activate(self, game_state, source, target):
+            if target:
+                poison = PoisonEffect(self.duration, self.damage_sequence)
+                target.apply_status_effect(poison)
+
+    class ReduceOpponentDefense:
+        def __init__(self, duration=1, reduction_percentage=30):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, game_state, source, target):
+            if target:
+                defense_reduction = DefenseReductionEffect(self.duration, self.reduction_percentage)
+                target.apply_status_effect(defense_reduction)
+
+    class BlockFireAttack:
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} blocks fire attacks.")
+            source.fire_shield_active = True
+
+    class BlockIceAttackAndSlow:
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} blocks ice attacks and slows the opponent.")
+            source.ice_wall_active = True
+            if target:
+                slow = SlowEffect(duration=1)
+                target.apply_status_effect(slow)
+
+    class ReflectElectricDamage:
+        def __init__(self, reflect_percentage=0.5):
+            self.reflect_percentage = reflect_percentage
+
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} reflects {int(self.reflect_percentage * 100)}% of electric damage.")
+            source.lightning_reflect_active = self.reflect_percentage
+
+    class ClearPoisonAndHeal:
+        def __init__(self, heal_amount=5):
+            self.heal_amount = heal_amount
+
+        def activate(self, game_state, source, target=None):
+            if source.has_status_effect("Poison"):
+                source.remove_status_effect("Poison")
+                print(f"Poison cleared from {source.name}.")
+            source.heal(self.heal_amount)
+            print(f"{source.name} healed {self.heal_amount} HP.")
+
+    class ReduceIncomingDamage:
+        def __init__(self, duration=2, reduction_percentage=50):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} reduces incoming damage by {self.reduction_percentage}%.")
+            source.damage_reduction_active = (self.reduction_percentage / 100, self.duration)
+
+
+class Card:
+    def __init__(self, name, card_type, cost=0, damage=0, block=0, description="", ability=None, tags=None):
+        self.name = name
+        self.card_type = card_type
+        self.cost = cost
+        self.damage = damage
+        self.block = block
+        self.description = description
+        self.ability = ability
+        self.tags = tags if tags is not None else []
+
+    def __str__(self):
+        info = f"{self.name} ({self.card_type}) - Cost: {self.cost}"
+        if self.damage > 0:
+            info += f", Damage: {self.damage}"
+        if self.block > 0:
+            info += f", Block: {self.block}"
+        info += f"\nDescription: {self.description}"
+        return info
+
+    def play(self, game_state, player, target=None):
+        print(f"{player.name} played {self.name} card.")
+        if self.ability:
+            self.ability.activate(game_state, player, target)
+        if self.damage > 0 and target:
+            print(f"{target.name} takes {self.damage} damage.")
+            target.take_damage(self.damage)
+        if self.block > 0:
+            player.defense += self.block
+            print(f"{player.name} gains {self.block} defense.")
+
+
+# Card Definitions
+flame_sword_card = Card(
+    name="Flame Sword", card_type="Attack", cost=2, damage=15,
+    description="Burns opponent for 2 turns (+5 damage/turn)",
+    ability=SpecialAbilities.ApplyBurn(duration=2, damage_per_turn=5),
+    tags=["Fire"])
+
+ice_spear_card = Card(
+    name="Ice Spear", card_type="Attack", cost=1, damage=10,
+    description="Prevents opponent from attacking next turn",
+    ability=SpecialAbilities.PreventAttackNextTurn(),
+    tags=["Ice"])
+
+lightning_strike_card = Card(
+    name="Lightning Strike", card_type="Attack", cost=2, damage=20,
+    description="50% chance to stun opponent for 1 turn",
+    ability=SpecialAbilities.ApplyStun(chance=0.5),
+    tags=["Electric"])
+
+poison_arrow_card = Card(
+    name="Poison Arrow", card_type="Attack", cost=1, damage=12,
+    description="Poisons opponent for 3 turns (5→10→15 damage)",
+    ability=SpecialAbilities.ApplyPoison(duration=3, damage_sequence=[5, 10, 15]),
+    tags=["Poison"])
+
+stone_storm_card = Card(
+    name="Stone Storm", card_type="Attack", cost=2, damage=18,
+    description="Reduces opponent's defense by 30% for 1 turn",
+    ability=SpecialAbilities.ReduceOpponentDefense(duration=1, reduction_percentage=30),
+    tags=["Earth"])
+
+fire_shield_card = Card(
+    name="Fire Shield", card_type="Defense", cost=2, block=20,
+    description="Completely blocks fire attacks",
+    ability=SpecialAbilities.BlockFireAttack(),
+    tags=["Fire"])
+
+ice_wall_card = Card(
+    name="Ice Wall", card_type="Defense", cost=1, block=15,
+    description="Blocks ice attacks and slows opponent",
+    ability=SpecialAbilities.BlockIceAttackAndSlow(),
+    tags=["Ice"])
+
+lightning_reflect_card = Card(
+    name="Lightning Reflect", card_type="Defense", cost=1, block=10,
+    description="Reflects 50% of electric damage",
+    ability=SpecialAbilities.ReflectElectricDamage(reflect_percentage=0.5),
+    tags=["Electric"])
+
+poison_cleanse_card = Card(
+    name="Poison Cleanse", card_type="Defense", cost=1, block=0,
+    description="Clears poison and heals 5 HP",
+    ability=SpecialAbilities.ClearPoisonAndHeal(heal_amount=5),
+    tags=["Poison"])
+
+stone_armor_card = Card(
+    name="Stone Armor", card_type="Defense", cost=3, block=25,
+    description="Reduces incoming damage by 50% for 2 turns",
+    ability=SpecialAbilities.ReduceIncomingDamage(duration=2, reduction_percentage=50),
+    tags=["Earth"])
+
+
+class ActionHistory:
+    def __init__(self):
+        self.stack = []
+
+    def push(self, action):
+        self.stack.append(action)
+
+    def pop(self):
+        return self.stack.pop() if self.stack else None
+
+
+class Player:
+    def __init__(self, name="Player", max_health=100):
+        self.name = name
+        self.max_health = max_health
+        self.health = max_health
+        self.defense = 0
+        self.deck = self.create_default_deck()
+        self.hand = []
+        self.stamina = 0
+        self.max_stamina = 10
+        self.status_effects = []
+        self.can_act = True
+        self.fire_shield_active = False
+        self.ice_wall_active = False
+        self.lightning_reflect_active = 0
+        self.damage_reduction_active = (0, 0)
+        self.history = ActionHistory()
+
+    def create_default_deck(self):
+        default_deck = []
+        cards = [
+            flame_sword_card, ice_spear_card, lightning_strike_card,
+            poison_arrow_card, stone_storm_card, fire_shield_card,
+            ice_wall_card, lightning_reflect_card, poison_cleanse_card,
+            stone_armor_card
+        ]
+        for _ in range(3):
+            default_deck.extend(cards)
+        random.shuffle(default_deck)
+        return default_deck
+
+    def draw_card(self):
+        if len(self.hand) < 7 and self.deck:
+            card = self.deck.pop()
+            self.hand.append(card)
+            print(f"{self.name} drew {card.name} card.")
+            return card
+        return None
+
+    def play_card(self, card_index, game_state, target=None):
+        if 0 <= card_index < len(self.hand):
+            card = self.hand[card_index]
+
+            # Save state before playing
+            self.history.push({
+                'type': 'play_card',
+                'card': card,
+                'card_index': card_index,
+                'target': target,
+                'player_health': self.health,
+                'target_health': target.health if target else None,
+                'player_stamina': self.stamina,
+                'player_defense': self.defense,
+                'status_effects': [str(e) for e in self.status_effects],
+                'fire_shield': self.fire_shield_active,
+                'ice_wall': self.ice_wall_active,
+                'lightning_reflect': self.lightning_reflect_active,
+                'damage_reduction': self.damage_reduction_active
+            })
+
+            if self.stamina >= card.cost:
+                self.stamina -= card.cost
+                card.play(game_state, self, target)
+                self.hand.pop(card_index)
+                return True
+            else:
+                print("Not enough AP!")
+        return False
+
+    def undo_last_action(self, game_state):
+        last_action = self.history.pop()
+        if not last_action:
+            print("No action to undo!")
+            return False
+
+        if last_action['type'] == 'play_card':
+            print(f"\nUNDO: Reverting last card play ({last_action['card'].name})")
+
+            # Restore card to hand
+            self.hand.insert(last_action['card_index'], last_action['card'])
+
+            # Restore stamina
+            self.stamina += last_action['card'].cost
+
+            # Restore player state
+            self.health = last_action['player_health']
+            self.defense = last_action['player_defense']
+            self.fire_shield_active = last_action['fire_shield']
+            self.ice_wall_active = last_action['ice_wall']
+            self.lightning_reflect_active = last_action['lightning_reflect']
+            self.damage_reduction_active = last_action['damage_reduction']
+
+            # Restore status effects
+            self.status_effects = [
+                eff for eff in self.status_effects
+                if str(eff) in last_action['status_effects']
+            ]
+
+            # Restore target health
+            if last_action['target']:
+                last_action['target'].health = last_action['target_health']
+
+            return True
+        return False
+
+    def take_damage(self, amount, damage_type="Physical"):
+        if damage_type == "Fire" and self.fire_shield_active:
+            print("Fire attack blocked!")
+            return
+        if damage_type == "Ice" and self.ice_wall_active:
+            print("Ice attack blocked!")
+            return
+
+        final_damage = amount
+        if self.damage_reduction_active[0] > 0:
+            reduction = self.damage_reduction_active[0]
+            final_damage = int(final_damage * (1 - reduction))
+            print(f"Damage reduced by {reduction * 100}%.")
+
+        if damage_type == "Electric" and self.lightning_reflect_active > 0:
+            reflected = int(final_damage * self.lightning_reflect_active)
+            final_damage -= reflected
+            print(f"{self.lightning_reflect_active * 100}% damage reflected.")
+
+        self.health -= max(0, final_damage - self.defense)
+        print(f"{self.name} takes {max(0,final_damage - self.defense)} damage. Remaining HP: {self.health}")
+
+    def heal(self, amount):
+        self.health = min(self.health + amount, self.max_health)
+        print(f"{self.name} heals {amount} HP. New HP: {self.health}")
+
+    def apply_status_effect(self, effect):
+        self.status_effects.append(effect)
+        effect.apply(self)
+
+    def remove_status_effect(self, effect_name):
+        for effect in self.status_effects[:]:
+            if effect.name == effect_name:
+                if hasattr(effect, 'remove'):
+                    effect.remove(self)
+                self.status_effects.remove(effect)
+                print(f"{effect_name} effect removed.")
+
+    def has_status_effect(self, effect_name):
+        return any(effect.name == effect_name for effect in self.status_effects)
+
+    def begin_turn(self):
+        self.can_act = True
+        self.stamina = min(self.stamina + 3, self.max_stamina)
+        self.defense = 0
+        self.fire_shield_active = False
+        self.ice_wall_active = False
+        self.draw_card()
+        print(f"\n{self.name}'s turn begins. AP: {self.stamina}")
+
+    def end_turn(self):
+        for effect in self.status_effects[:]:
+            if effect.tick(self):
+                self.remove_status_effect(effect.name)
+
+        if self.damage_reduction_active[1] > 0:
+            duration_left = self.damage_reduction_active[1] - 1
+            self.damage_reduction_active = (self.damage_reduction_active[0], duration_left)
+            if duration_left <= 0:
+                print("Damage reduction effect ended.")
+                self.damage_reduction_active = (0, 0)
+
+        print(f"{self.name}'s turn ends.")
+
+    def show_hand(self):
+        print(f"\n{self.name}'s hand:")
+        for i, card in enumerate(self.hand):
+            print(f"{i + 1}. {card}")
+
+
+class AIPlayer(Player):
+    def __init__(self, name="Computer", max_health=100):
+        super().__init__(name, max_health)
+        self.difficulty = "medium"  # easy, medium, hard
+
+    def can_play_card(self):
+        return any(card.cost <= self.stamina for card in self.hand)
+
+    def make_decision(self, game_state):
+        opponent = game_state.opponent()
+
+        if not self.can_play_card():
+            print(f"{self.name} has no playable cards and passes.")
+            return False  # Indicate that AI passes
+
+        # Check defensive cards first
+        defense_cards = [card for card in self.hand if card.card_type == "Defense"]
+        attack_cards = [card for card in self.hand if card.card_type == "Attack"]
+
+        # Emergency control (low health)
+        if self.health < 0.3 * self.max_health:
+            # Use a healing card if available
+            heal_card = next((card for card in defense_cards if "heal" in card.name.lower()), None)
+            if heal_card and heal_card.cost <= self.stamina:
+                return self.play_card(self.hand.index(heal_card), game_state)
+
+            # Use defense card
+            if defense_cards:
+                # Choose the best defense card (highest block)
+                best_defense = max(defense_cards, key=lambda x: x.block)
+                if best_defense.cost <= self.stamina:
+                    return self.play_card(self.hand.index(best_defense), game_state)
+
+        # Make moves according to your opponent's situation
+        if opponent.status_effects:
+            # If the opponent already has a status effect, focus on dealing direct damage
+            if attack_cards:
+                # Choose the card with the highest damage
+                best_attack = max(attack_cards, key=lambda x: x.damage)
+                if best_attack.cost <= self.stamina:
+                    return self.play_card(self.hand.index(best_attack), game_state, opponent)
+        else:
+            # Prefer cards that apply status effects
+            status_attack_cards = [card for card in attack_cards if card.ability is not None]
+            if status_attack_cards:
+                # Select a random status effect card
+                selected_card = random.choice(status_attack_cards)
+                if selected_card.cost <= self.stamina:
+                    return self.play_card(self.hand.index(selected_card), game_state, opponent)
+
+        # Play a random card if no specific strategy applies
+        playable_cards = [card for card in self.hand if card.cost <= self.stamina]
+        if playable_cards:
+            # Strategy according to difficulty level
+            if self.difficulty == "easy":
+                card = random.choice(playable_cards)
+            elif self.difficulty == "medium":
+                # Choose better cards
+                card = max(playable_cards, key=lambda x: x.damage if x.card_type == "Attack" else x.block)
+            else:  # hard
+                # Check combinations
+                if any(eff.name == "Defense Reduction" for eff in opponent.status_effects):
+                    # If defense is low, deal high damage
+                    high_dmg = max((c for c in playable_cards if c.card_type == "Attack"),
+                                   key=lambda x: x.damage, default=None)
+                    if high_dmg:
+                        card = high_dmg
+                else:
+                    # First lower your defense, then attack
+                    defense_reducer = next((c for c in playable_cards
+                                            if "ReduceOpponentDefense" in str(c.ability)), None)
+                    if defense_reducer:
+                        card = defense_reducer
+                    else:
+                        card = max(playable_cards, key=lambda x: x.damage if x.card_type == "Attack" else x.block)
+
+            return self.play_card(self.hand.index(card), game_state, opponent if card.card_type == "Attack" else None)
+
+        return False # Should not reach here if can_play_card is checked
+
+
+class GameState:
+    def __init__(self, player1, player2):
+        self.players = [player1, player2]
+        self.current_player_index = 0
+        self.turn = 1
+
+    def current_player(self):
+        return self.players[self.current_player_index]
+
+    def opponent(self):
+        return self.players[1 - self.current_player_index]
+
+    def switch_player(self):
+        self.current_player_index = 1 - self.current_player_index
+
+    def play_turn(self):
+        current = self.current_player()
+        opponent = self.opponent()
+
+        current.begin_turn()
+
+        if isinstance(current, AIPlayer):
+            print(f"\n{current.name}'s turn:")
+            current.show_hand()
+            while current.stamina > 0 and current.hand:
+                if not current.can_play_card():
+                    print(f"{current.name} has no playable cards and passes.")
+                    break
+                if not current.make_decision(self):
+                    print(f"{current.name} chooses to pass.")
+                    break
+                time.sleep(0.8)  # Biraz daha kısa bekleme süresi
+        else:
+            current.show_hand()
+            while current.stamina > 0 and current.hand:
+                playable_cards_in_hand = [card for card in current.hand if card.cost <= current.stamina]
+                if not playable_cards_in_hand:
+                    print(f"{current.name} has no playable cards and passes.")
+                    break
+                choice = input("Enter card number (1-5), 'u' to undo, or 'p' to pass turn: ")
+                if choice == 'p':
+                    print(f"{current.name} passes the turn.")
+                    break
+                elif choice.lower() == 'u':
+                    current.undo_last_action(self)
+                    current.show_hand()
+                    continue
+                try:
+                    card_index = int(choice) - 1
+                    if 0 <= card_index < len(current.hand):
+                        card_to_play = current.hand[card_index]
+                        if current.stamina >= card_to_play.cost:
+                            current.play_card(card_index, self, opponent)
+                            current.show_hand()
+                        else:
+                            print("Not enough AP to play this card.")
+                    else:
+                        print("Invalid card number.")
+                except ValueError:
+                    print("Invalid input!")
+
+        current.end_turn()
+        self.switch_player()
+        self.turn += 1
+
+    def is_game_over(self):
+        return any(player.health <= 0 for player in self.players)
+
+    def display_status(self):
+        print("\n" + "=" * 40)
+        print(f"Turn {self.turn}")
+        for player in self.players:
+            status = f"{player.name}: HP {player.health}/{player.max_health} | AP: {player.stamina}/{player.max_stamina}"
+            if player.status_effects:
+                status += f" | Effects: {', '.join(str(effect) for effect in player.status_effects)}"
+            print(status)
+        print("=" * 40)
+
+
+def main():
+    print("Welcome to REDEMPTION!")
+    player_name = input("Please enter your name: ")
+
+    difficulty = input("Select AI difficulty (easy, medium, hard): ").lower()
+    while difficulty not in ["easy", "medium", "hard"]:
+        difficulty = input("Invalid difficulty. Please choose easy, medium or hard: ").lower()
+
+    player = Player(player_name)
+    computer = AIPlayer("Computer")
+    computer.difficulty = difficulty
+
+    game = GameState(player, computer)
+
+    # Starting hand
+    for _ in range(5):
+        player.draw_card()
+        computer.draw_card()
+
+    while not game.is_game_over():
+        game.display_status()
+        game.play_turn()
+        time.sleep(0.3)
+
+    game.display_status()
+    winner = player if player.health > 0 else computer
+    print(f"\nGame over! Winner: {winner.name}")
+
+
+if __name__ == "__main__":
+    main()
