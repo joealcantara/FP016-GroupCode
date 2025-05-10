@@ -1,0 +1,113 @@
+#5677995
+def load_cards(file_path="cards.json"):
+    with open(file_path) as f:
+        return json.load(f)
+[{"name": "Ice Spear", "type": "attack", "element": "ice", "damage": 15, "description": "Deals ice damage."},
+  {"name": "Stone Storm", "type": "attack", "element": "earth", "damage": 10, "description": "Hits all enemies."}]
+#random variables not sure of the actuall weapons right now as billy coded that
+def save_game(player, filename="save.json"):
+    with open(filename, "w") as f:
+        json.dump(player.to_dict(), f)
+
+def load_game(filename="save.json"):
+class CardViewer:
+    def __init__(self, root, card_info_frame):
+        self.label = tk.Label(card_info_frame, text="", wraplength=200, justify='left')
+        self.label.pack()
+
+    def show_card_info(self, card):
+        self.label.config(text=f"{card['name']}\n\n{card['description']}")
+
+def check_combo(self, played_cards):
+    if {"Ice Spear", "Stone Storm"}.issubset(set(played_cards)):
+        print("Combo triggered: Frozen Armor Crumble!")
+        return {"bonus_damage": 20}
+    return {}
+
+class CombatManager:
+    def __init__(self, player, enemy):
+        self.player = player
+        self.enemy = enemy
+
+    def play_card(self, card):
+# resolve card effect and check for combos
+#5677995
+# Class representing a looted goods that can restore health
+class LootedGoods:
+    def __init__(self, name, restore_health=0):
+        self.name = name
+        self.restore_health = restore_health
+
+# Represents a weapon with upgradeable attributes
+#5677995
+class Weapon:
+    def __init__(self, name, base_level_damage):
+        self.name = name
+        self.base_level_damage = base_level_damage  # Base damage of the weapon
+        self.attributes = []  
+
+# Check if attribute can be added and is viable
+    def can_upgrade(self, attribute):
+        return attribute not in self.attributes
+
+# Add attribute to the weapon if it isn't already applied
+    def upgrade(self, attribute):
+        if self.can_upgrade(attribute):
+            self.attributes.append(attribute)
+            print(f"{self.name} has obtained the attribute: {attribute} from opponent.")
+
+# representing the displaying the weapon as a string
+    def __str__(self):
+        attributes_list = ", ".join(self.attributes) if self.attributes else "None"
+        return f"Weapon: {self.name} | Damage: {self.base_level_damage} | attributes: {attributes_list}"
+
+
+# Represents a shield with strength and attributes
+class Shield:
+    def __init__(self, strength, base_level_damage=None):  # base_level_damage not used
+        self.strength = strength
+        self.attributes = []
+
+ # Check if the shield can be upgraded with a specific attribute
+    def can_upgrade(self, attribute):
+        return attribute not in self.attributes or attribute == "strength"
+
+    # Apply an upgrade to the shield
+    def upgrade(self, attribute):
+        if attribute == "strength":
+            self.strength += 10
+            print("Shield strength increased by 10.")
+        elif self.can_upgrade(attribute):
+            self.attributes.append(attribute)
+            print(f"Shield obtained attribute: {attribute}.")
+
+    # String representation for displaying the shield
+    def __str__(self):
+        attributes_list = ", ".join(self.attributes) if self.attributes else "None"
+        return f"Shield | Durability: {self.strength} | attributes: {attributes_list}"
+
+
+# Represents an enemy from which the player can loot attributes
+class Enemy:
+    def __init__(self, name, health, attributes=None):
+        self.name = name
+        self.health = health
+        self.attributes = attributes if attributes else []
+
+#representation for displaying the enemy 
+    def __str__(self):
+        return f"Enemy: {self.name} | HP: {self.health} | attributes: {', '.join(self.attributes)}"
+
+    # String representation of the enemy
+    def __str__(self):
+        return f"Enemy: {self.name} | HP: {self.health} | Attributes: {', '.join(self.attributes)}"
+
+    def inflicted_attack(self, damage):
+        if self.shield > 0:
+            absorbed_damage = min(self.shield, damage)
+            self.shield -= absorbed_damage
+            actual_damage = damage - absorbed_damage
+        else:
+            actual_damage = damage
+
+        self.health = max(self.health - actual_damage, 0)
