@@ -1147,7 +1147,130 @@ def main():
     game.display_status()
     winner = player if player.health > 0 else computer
     print(f"\nGame over! Winner: {winner.name}")
-    
+
+5677995
+# Represents a weapon with upgradeable attributes
+class Weapon:
+    def __init__(self, name, base_level_damage):
+        self.name = name
+        self.base_level_damage = base_level_damage  # Base damage of the weapon
+        self.attributes = []  
+
+# Check if attribute can be added and is viable
+    def can_upgrade(self, attribute):
+        return attribute not in self.attributes
+
+# Add attribute to the weapon if it isn't already applied
+    def upgrade(self, attribute):
+        if self.can_upgrade(attribute):
+            self.attributes.append(attribute)
+            print(f"{self.name} has obtained the attribute: {attribute} from opponent.")
+
+# representing the displaying the weapon as a string
+    def __str__(self):
+        attributes_list = ", ".join(self.attributes) if self.attributes else "None"
+        return f"Weapon: {self.name} | Damage: {self.base_level_damage} | attributes: {attributes_list}"
+
+
+# Represents a shield with strength and attributes
+class Shield:
+    def __init__(self, strength, base_level_damage=None):  # base_level_damage not used
+        self.strength = strength
+        self.attributes = []
+
+ # Check if the shield can be upgraded with a specific attribute
+    def can_upgrade(self, attribute):
+        return attribute not in self.attributes or attribute == "strength"
+
+    # Apply an upgrade to the shield
+    def upgrade(self, attribute):
+        if attribute == "strength":
+            self.strength += 10
+            print("Shield strength increased by 10.")
+        elif self.can_upgrade(attribute):
+            self.attributes.append(attribute)
+            print(f"Shield obtained attribute: {attribute}.")
+
+    # String representation for displaying the shield
+    def __str__(self):
+        attributes_list = ", ".join(self.attributes) if self.attributes else "None"
+        return f"Shield | Durability: {self.strength} | attributes: {attributes_list}"
+
+
+# Represents an enemy from which the player can loot attributes
+class Enemy:
+    def __init__(self, name, health, attributes=None):
+        self.name = name
+        self.health = health
+        self.attributes = attributes if attributes else []
+
+#representation for displaying the enemy 
+    def __str__(self):
+        return f"Enemy: {self.name} | HP: {self.health} | attributes: {', '.join(self.attributes)}"
+
+
+# Represents the player character with health, items, and upgrade functionality
+class Player:
+    def __init__(self, name):
+        self.name = name
+        self.max_health = 300
+        self.health = 300
+        self.max_stamina = 50
+        self.stamina = 3
+        self.shield = Shield(strength=20)  # Starting shield
+        self.weapon = Weapon("crimson double edge Sword", base_level_damage=20)  # Starting weapon
+        self.inventory_looted_goods = []
+        self.armour = Weapon("Iron Armour", base_level_damage=0)  # Using Weapon class as a placeholder for Armour
+
+# String representation for displaying player stats and gear
+    def __str__(self):
+        return f"{self.name} | HP: {self.health} | Stamina: {self.stamina}\n{self.weapon}\n{self.shield}"
+
+    # Loots special attributes from an enemy and applies them if possible
+    def loot_enemy_attributes(self, enemy):
+        upgradable = False  # Tracks whether any attribute is upgradable
+
+        # Loop through all attributes the enemy has
+        for attribute in enemy.attributes:
+            options = []
+
+            # Check which items can accept this attribute
+            if self.weapon.can_upgrade(attribute):
+                options.append("weapon")
+            if self.shield.can_upgrade(attribute):
+                options.append("shield")
+            if self.armour.can_upgrade(attribute):
+                options.append("armour")
+
+            # Present upgrade options if any are valid
+            if options:
+                upgradable = True
+                print(f"\nAttribute '{attribute}' can be applied to: {', '.join(options)}")
+
+                # Let player choose where to apply the upgrade
+                while True:
+                    choice = input(f"Where do you want to apply '{attribute}'? (w/s/a): ").strip().lower()
+                    if choice == 'w' and "weapon" in options:
+                        self.weapon.upgrade(attribute)
+                        break
+                    elif choice == 's' and "shield" in options:
+                        self.shield.upgrade(attribute)
+                        break
+                    elif choice == 'a' and "armour" in options:
+                        self.armour.upgrade(attribute)
+                        break
+                    else:
+                        print("I not applicable. Try again.")
+
+        # Inform the player if no upgrades were applicable
+        if not upgradable:
+            print("No upgrades are available at this time.")
+
+    # Simulates defeating an enemy and triggering attribute looting
+    def defeat_enemy(self, enemy):
+        print(f"{self.name} defeated {enemy.name}!")
+        self.loot_enemy_attributes(enemy)
+5677995
 
 
 5665548
