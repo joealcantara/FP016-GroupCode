@@ -435,7 +435,7 @@ class Player:
             return True
         return False
             #5652765
-            def take_damage(self, amount, damage_type="Physical"):
+                def take_damage(self, amount, damage_type="Physical"):
         if damage_type == "Fire" and self.fire_shield_active:
             print("Fire attack blocked!")
             return
@@ -456,15 +456,15 @@ class Player:
 
         self.health -= max(0, final_damage - self.defense)
         print(f"{self.name} takes {max(0, final_damage - self.defense)} damage. Remaining HP: {self.health}")
-        #5652765
+
     def heal(self, amount):
         self.health = min(self.health + amount, self.max_health)
         print(f"{self.name} heals {amount} HP. New HP: {self.health}")
-        #5652765
+
     def apply_status_effect(self, effect):
         self.status_effects.append(effect)
         effect.apply(self)
-        #5652765
+
     def remove_status_effect(self, effect_name):
         for effect in self.status_effects[:]:
             if effect.name == effect_name:
@@ -472,10 +472,10 @@ class Player:
                     effect.remove(self)
                 self.status_effects.remove(effect)
                 print(f"{effect_name} effect removed.")
-        #5652765
+
     def has_status_effect(self, effect_name):
         return any(effect.name == effect_name for effect in self.status_effects)
-        #5652765
+
     def begin_turn(self):
         self.can_act = True
         self.stamina = min(self.stamina + 3, self.max_stamina)
@@ -484,7 +484,7 @@ class Player:
         self.ice_wall_active = False
         self.draw_card()
         print(f"\n{self.name}'s turn begins. AP: {self.stamina}")
-        #5652765
+
     def end_turn(self):
         for effect in self.status_effects[:]:
             if effect.tick(self):
@@ -498,7 +498,7 @@ class Player:
                 self.damage_reduction_active = (0, 0)
 
         print(f"{self.name}'s turn ends.")
-        #5652765
+
     def show_hand(self):
         print(f"\n{self.name}'s hand:")
         for i, card in enumerate(self.hand):
@@ -580,6 +580,113 @@ class AIPlayer(Player):
             return self.play_card(self.hand.index(card), game_state, opponent if card.card_type == "Attack" else None)
 
         return False
+#5652765
+class GameState:
+    def __init__(self, player1, player2):
+        self.players = [player1, player2]
+        self.current_player_index = 0
+        self.turn = 1
+
+    def current_player(self):
+        return self.players[self.current_player_index]
+
+    def opponent(self):
+        return self.players[1 - self.current_player_index]
+
+    def switch_player(self):
+        self.current_player_index = 1 - self.current_player_index
+
+    def play_turn(self):
+        current = self.current_player()
+        opponent = self.opponent()
+
+        current.begin_turn()
+
+        if isinstance(current, AIPlayer):
+            print(f"\n{current.name}'s turn:")
+            current.show_hand()
+            while current.stamina > 0 and current.hand:
+                if not current.can_play_card():
+                    print(f"{current.name} has no playable cards and passes.")
+                    break
+                if not current.make_decision(self):
+                    print(f"{current.name} chooses to pass.")
+                    break
+                time.sleep(0.8)  # Biraz daha kısa bekleme süresi
+        else:
+            current.show_hand()
+            while current.stamina > 0 and current.hand:
+                playable_cards_in_hand = [card for card in current.hand if card.cost <= current.stamina]
+                if not playable_cards_in_hand:
+                    print(f"{current.name} has no playable cards and passes.")
+                    break
+                choice = input("Enter card number (1-5), 'u' to undo, or 'p' to pass turn: ")
+                if choice == 'p':
+                    print(f"{current.name} passes the turn.")
+                    break
+                elif choice.lower() == 'u':
+                    current.undo_last_action(self)
+                    current.show_hand()
+                    continue
+                try:
+                    card_index = int(choice) - 1
+                    if 0 <= card_index < len(current.hand):
+                        card_to_play = current.hand[card_index]
+                        if current.stamina >= card_to_play.cost:
+                            current.play_card(card_index, self, opponent)
+                            current.show_hand()
+                        else:
+                            print("Not enough AP to play this card.")
+                    else:
+                        print("Invalid card number.")
+                except ValueError:
+                    print("Invalid input!")
+
+        current.end_turn()
+        self.switch_player()
+        self.turn += 1
+
+    def is_game_over(self):
+        return any(player.health <= 0 for player in self.players)
+
+    def display_status(self):
+        print("\n" + "=" * 40)
+        print(f"Turn {self.turn}")
+        for player in self.players:
+            status = f"{player.name}: HP {player.health}/{player.max_health} | AP: {player.stamina}/{player.max_stamina}"
+            if player.status_effects:
+                status += f" | Effects: {', '.join(str(effect) for effect in player.status_effects)}"
+            print(status)
+        print("=" * 40)
+
+
+def main():
+    print("Welcome to REDEMPTION!")
+    player_name = input("Please enter your name: ")
+
+    difficulty = input("Select AI difficulty (easy, medium, hard): ").lower()
+    while difficulty not in ["easy", "medium", "hard"]:
+        difficulty = input("Invalid difficulty. Please choose easy, medium or hard: ").lower()
+
+    player = Player(player_name)
+    computer = AIPlayer("Computer")
+    computer.difficulty = difficulty
+
+    game = GameState(player, computer)
+
+    # Starting hand
+    for _ in range(5):
+        player.draw_card()
+        computer.draw_card()
+
+    while not game.is_game_over():
+        game.display_status()
+        game.play_turn()
+        time.sleep(1)
+
+    game.display_status()
+    winner = player if player.health > 0 else computer
+    print(f"\nGame over! Winner: {winner.name}")
 
 #5677995
 def load_cards(file_path="cards.json"):
@@ -1151,183 +1258,14 @@ class Player:
         self.canvas.unbind("<ButtonRelease-1>")
 #5665548
 
-#5652765 5677995
-# Game state class
-class GameState:
-    def __init__(self, player1, player2):
-        self.players = [player1, player2]
-        self.current_player_index = 0
-        self.turn = 1
 
-    def current_player(self):
-        return self.players[self.current_player_index]
-
-    def opponent(self):
-        return self.players[1 - self.current_player_index]
-
-    def switch_player(self):
-        self.current_player_index = 1 - self.current_player_index
-
-    def play_turn(self):
-        current = self.current_player()
-        opponent = self.opponent()
-
-        current.begin_turn()
-
-        if isinstance(current, AIPlayer):
-            print(f"\n{current.name}'s turn:")
-            current.show_hand()
-            # AI will now make decisions until it can't play a card or chooses to pass
-            while current.stamina > 0 and current.hand:
-                if not current.make_decision(self):  # If AI can't/won't play a card
-                    print(f"{current.name} passes the turn.")
-                    break
-                time.sleep(1)  # Add a small delay for readability
-        else:
-            current.show_hand()
-            while current.stamina > 0 and current.hand:
-                choice = input("Enter card number (1-5), 'u' to undo, or 'p' to pass turn: ")
-                if choice == 'p':
-                    print(f"{current.name} passes the turn.")
-                    break
-                elif choice.lower() == 'u':
-                    current.undo_last_action(self)
-                    current.show_hand()
-                    continue
-                try:
-                    card_index = int(choice) - 1
-                    if 0 <= card_index < len(current.hand):
-                        card_to_play = current.hand[card_index]
-                        if current.stamina >= card_to_play.cost:
-                            current.play_card(card_index, self, opponent)
-                            current.show_hand()
-                        else:
-                            print("Not enough AP to play this card.")
-                    else:
-                        print("Invalid card number.")
-                except ValueError:
-                    print("Invalid input!")
-
-        current.end_turn()
-        self.switch_player()
-        self.turn += 1
-
-
-    def is_game_over(self):
-        return any(player.health <= 0 for player in self.players)
-
-    def display_status(self):
-        print("\n" + "=" * 40)
-        print(f"Turn {self.turn}")
-        for player in self.players:
-            status = f"{player.name}: HP {player.health}/{player.max_health}"
-            if player.status_effects:
-                status += f" | Effects: {', '.join(str(effect) for effect in player.status_effects)}"
-            print(status)
-        print("=" * 40)
-#5652765
-# Game initialization
-def main():
-    print("Welcome to REDEMPTION!")
-    player_name = input("Please enter your name: ")
-
-    difficulty = input("Select AI difficulty (easy, medium, hard): ").lower()
-    while difficulty not in ["easy", "medium", "hard"]:
-        difficulty = input("Invalid difficulty. Please choose easy, medium or hard: ").lower()
-
-    player = Player(player_name)
-    computer = AIPlayer("Computer")
-    computer.difficulty = difficulty
-
-    game = GameState(player, computer)
-
-    # Starting hand
-    for _ in range(5):
-        player.draw_card()
-        computer.draw_card()
-
-    while not game.is_game_over():
-        game.display_status()
-        game.play_turn()
-        time.sleep(1)
-
-    game.display_status()
-    winner = player if player.health > 0 else computer
-    print(f"\nGame over! Winner: {winner.name}")
-
-
-
-
-# Represents the player character with health, items, and upgrade functionality
-class Player:
-    def __init__(self, name):
-        self.name = name
-        self.max_health = 300
-        self.health = 300
-        self.max_stamina = 50
-        self.stamina = 3
-        self.shield = Shield(strength=20)  # Starting shield
-        self.weapon = Weapon("crimson double edge Sword", base_level_damage=20)  # Starting weapon
-        self.inventory_looted_goods = []
-        self.armour = Weapon("Iron Armour", base_level_damage=0)  # Using Weapon class as a placeholder for Armour
-
-# String representation for displaying player stats and gear
-    def __str__(self):
-        return f"{self.name} | HP: {self.health} | Stamina: {self.stamina}\n{self.weapon}\n{self.shield}"
-
-    # Loots special attributes from an enemy and applies them if possible
-    def loot_enemy_attributes(self, enemy):
-        upgradable = False  # Tracks whether any attribute is upgradable
-
-        # Loop through all attributes the enemy has
-        for attribute in enemy.attributes:
-            options = []
-
-            # Check which items can accept this attribute
-            if self.weapon.can_upgrade(attribute):
-                options.append("weapon")
-            if self.shield.can_upgrade(attribute):
-                options.append("shield")
-            if self.armour.can_upgrade(attribute):
-                options.append("armour")
-
-            # Present upgrade options if any are valid
-            if options:
-                upgradable = True
-                print(f"\nAttribute '{attribute}' can be applied to: {', '.join(options)}")
-
-                # Let player choose where to apply the upgrade
-                while True:
-                    choice = input(f"Where do you want to apply '{attribute}'? (w/s/a): ").strip().lower()
-                    if choice == 'w' and "weapon" in options:
-                        self.weapon.upgrade(attribute)
-                        break
-                    elif choice == 's' and "shield" in options:
-                        self.shield.upgrade(attribute)
-                        break
-                    elif choice == 'a' and "armour" in options:
-                        self.armour.upgrade(attribute)
-                        break
-                    else:
-                        print("I not applicable. Try again.")
-
-        # Inform the player if no upgrades were applicable
-        if not upgradable:
-            print("No upgrades are available at this time.")
-
-    # Simulates defeating an enemy and triggering attribute looting
-    def defeat_enemy(self, enemy):
-        print(f"{self.name} defeated {enemy.name}!")
-        self.loot_enemy_attributes(enemy)
-5677995
-
-
-5665548
+#5665548 #5652765
 if __name__ == "__main__":
+    main()
     root = tk.Tk()
     game = Game(root)
     root.mainloop()
-5665548
+#5665548
 
 
 
