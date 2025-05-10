@@ -1094,22 +1094,45 @@ class GameState:
         opponent = self.opponent()
 
         current.begin_turn()
-        current.show_hand()
 
-        if current.hand:
-            played = False
-            while not played:
+        if isinstance(current, AIPlayer):
+            print(f"\n{current.name}'s turn:")
+            current.show_hand()
+            # AI will now make decisions until it can't play a card or chooses to pass
+            while current.stamina > 0 and current.hand:
+                if not current.make_decision(self):  # If AI can't/won't play a card
+                    print(f"{current.name} passes the turn.")
+                    break
+                time.sleep(1)  # Add a small delay for readability
+        else:
+            current.show_hand()
+            while current.stamina > 0 and current.hand:
+                choice = input("Enter card number (1-5), 'u' to undo, or 'p' to pass turn: ")
+                if choice == 'p':
+                    print(f"{current.name} passes the turn.")
+                    break
+                elif choice.lower() == 'u':
+                    current.undo_last_action(self)
+                    current.show_hand()
+                    continue
                 try:
-                    choice = int(input("Enter the card number you want to play (0 to exit): ")) - 1
-                    if choice == -1:
-                        break
-                    played = current.play_card(choice, self, opponent)
-                except (ValueError, IndexError):
+                    card_index = int(choice) - 1
+                    if 0 <= card_index < len(current.hand):
+                        card_to_play = current.hand[card_index]
+                        if current.stamina >= card_to_play.cost:
+                            current.play_card(card_index, self, opponent)
+                            current.show_hand()
+                        else:
+                            print("Not enough AP to play this card.")
+                    else:
+                        print("Invalid card number.")
+                except ValueError:
                     print("Invalid input!")
 
         current.end_turn()
         self.switch_player()
         self.turn += 1
+
 
     def is_game_over(self):
         return any(player.health <= 0 for player in self.players)
