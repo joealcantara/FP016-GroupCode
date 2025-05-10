@@ -4,7 +4,7 @@ import time
 
 
 
-5652765
+#5652765
 # Status effects class
 class StatusEffect:
     def __init__(self, name, duration):
@@ -21,7 +21,7 @@ class StatusEffect:
     def __str__(self):
         return f"{self.name} ({self.duration} turns)"
 
-5652765
+#5652765
 class BurnEffect(StatusEffect):
     def __init__(self, duration, damage_per_turn):
         super().__init__("Burn", duration)
@@ -36,7 +36,7 @@ class BurnEffect(StatusEffect):
         target.take_damage(self.damage_per_turn, "Fire")
         return super().tick(target)
 
-5652765
+#5652765
 class StunEffect(StatusEffect):
     def __init__(self, duration=1):
         super().__init__("Stun", duration)
@@ -45,7 +45,7 @@ class StunEffect(StatusEffect):
         print(f"{target.name} is stunned and can't move!")
         target.can_act = False
 
-5652765
+#5652765
 class PoisonEffect(StatusEffect):
     def __init__(self, duration, damage_sequence):
         super().__init__("Poison", duration)
@@ -64,7 +64,7 @@ class PoisonEffect(StatusEffect):
             self.current_tick += 1
         return super().tick(target)
 
-5652765
+#5652765
 class DefenseReductionEffect(StatusEffect):
     def __init__(self, duration, reduction_percentage):
         super().__init__("Defense Reduction", duration)
@@ -80,7 +80,7 @@ class DefenseReductionEffect(StatusEffect):
         target.defense = self.original_defense
         print(f"{target.name}'s defense returns to normal.")
 
-5652765
+#5652765
 class SlowEffect(StatusEffect):
     def __init__(self, duration=1):
         super().__init__("Slow", duration)
@@ -91,7 +91,7 @@ class SlowEffect(StatusEffect):
 
 
 # Special abilities class
-5652765
+#5652765
 class SpecialAbilities:
     class ApplyBurn:
         def __init__(self, duration=2, damage_per_turn=5):
@@ -102,13 +102,13 @@ class SpecialAbilities:
             if target:
                 burn = BurnEffect(self.duration, self.damage_per_turn)
                 target.apply_status_effect(burn)
-5652765
+#5652765
     class PreventAttackNextTurn:
         def activate(self, game_state, source, target):
             if target:
                 stun = StunEffect(duration=1)
                 target.apply_status_effect(stun)
-5652765
+#5652765
     class ApplyStun:
         def __init__(self, chance=0.5, duration=1):
             self.chance = chance
@@ -121,7 +121,7 @@ class SpecialAbilities:
                 print(f"{target.name} is stunned!")
             else:
                 print(f"{target.name} resisted the stun.")
-5652765
+#5652765
     class ApplyPoison:
         def __init__(self, duration=3, damage_sequence=[5, 10, 15]):
             self.duration = duration
@@ -131,7 +131,7 @@ class SpecialAbilities:
             if target:
                 poison = PoisonEffect(self.duration, self.damage_sequence)
                 target.apply_status_effect(poison)
-5652765
+#5652765
     class ReduceOpponentDefense:
         def __init__(self, duration=1, reduction_percentage=30):
             self.duration = duration
@@ -141,12 +141,12 @@ class SpecialAbilities:
             if target:
                 defense_reduction = DefenseReductionEffect(self.duration, self.reduction_percentage)
                 target.apply_status_effect(defense_reduction)
-5652765
+#5652765
     class BlockFireAttack:
         def activate(self, game_state, source, target=None):
             print(f"{source.name} blocks fire attacks.")
             source.fire_shield_active = True
-5652765
+#5652765
     class BlockIceAttackAndSlow:
         def activate(self, game_state, source, target=None):
             print(f"{source.name} blocks ice attacks and slows the opponent.")
@@ -154,7 +154,7 @@ class SpecialAbilities:
             if target:
                 slow = SlowEffect(duration=1)
                 target.apply_status_effect(slow)
-5652765
+#5652765
     class ReflectElectricDamage:
         def __init__(self, reflect_percentage=0.5):
             self.reflect_percentage = reflect_percentage
@@ -162,7 +162,7 @@ class SpecialAbilities:
         def activate(self, game_state, source, target=None):
             print(f"{source.name} reflects {int(self.reflect_percentage * 100)}% of electric damage.")
             source.lightning_reflect_active = self.reflect_percentage
-5652765
+#5652765
     class ClearPoisonAndHeal:
         def __init__(self, heal_amount=5):
             self.heal_amount = heal_amount
@@ -173,7 +173,7 @@ class SpecialAbilities:
                 print(f"Poison cleared from {source.name}.")
             source.heal(self.heal_amount)
             print(f"{source.name} healed {self.heal_amount} HP.")
-5652765
+#5652765
     class ReduceIncomingDamage:
         def __init__(self, duration=2, reduction_percentage=50):
             self.duration = duration
@@ -185,7 +185,7 @@ class SpecialAbilities:
 
 
 # Card class
-5652765
+#5652765
 class Card:
     def __init__(self, name, card_type, cost=0, damage=0, block=0, description="", ability=None, tags=None):
         self.name = name
@@ -217,7 +217,7 @@ class Card:
             player.defense += self.block
             print(f"{player.name} gains {self.block} defense.")
 
-5652765
+#5652765
 # Elemental attack cards
 flame_sword_card = Card(
     name="Flame Sword",
@@ -319,6 +319,35 @@ stone_armor_card = Card(
     ability=SpecialAbilities.ReduceIncomingDamage(duration=2, reduction_percentage=50),
     tags=["Earth"]
 )
+#5652765
+class ActionHistory:
+    def __init__(self):
+        self.stack = []
+
+    def push(self, action):
+        self.stack.append(action)
+
+    def pop(self):
+        return self.stack.pop() if self.stack else None
+#5652765 and #
+class Player:
+    def __init__(self, name="Player", max_health=100):
+        self.name = name
+        self.max_health = max_health
+        self.health = max_health
+        self.defense = 0
+        self.deck = self.create_default_deck()
+        self.hand = []
+        self.stamina = 0
+        self.max_stamina = 10
+        self.status_effects = []
+        self.can_act = True
+        self.fire_shield_active = False
+        self.ice_wall_active = False
+        self.lightning_reflect_active = 0
+        self.damage_reduction_active = (0, 0)
+        self.history = ActionHistory()
+     #5652765
     def create_default_deck(self):
         default_deck = []
         cards = [
@@ -327,11 +356,11 @@ stone_armor_card = Card(
             ice_wall_card, lightning_reflect_card, poison_cleanse_card,
             stone_armor_card
         ]
-        for _ in range(3):  # 3 copies of each card
+        for _ in range(3):
             default_deck.extend(cards)
         random.shuffle(default_deck)
         return default_deck
-
+     #5652765
     def draw_card(self):
         if len(self.hand) < 7 and self.deck:
             card = self.deck.pop()
@@ -339,6 +368,218 @@ stone_armor_card = Card(
             print(f"{self.name} drew {card.name} card.")
             return card
         return None
+        #5652765
+    def play_card(self, card_index, game_state, target=None):
+        if 0 <= card_index < len(self.hand):
+            card = self.hand[card_index]
+
+            # Save state before playing
+            self.history.push({
+                'type': 'play_card',
+                'card': card,
+                'card_index': card_index,
+                'target': target,
+                'player_health': self.health,
+                'target_health': target.health if target else None,
+                'player_stamina': self.stamina,
+                'player_defense': self.defense,
+                'status_effects': [str(e) for e in self.status_effects],
+                'fire_shield': self.fire_shield_active,
+                'ice_wall': self.ice_wall_active,
+                'lightning_reflect': self.lightning_reflect_active,
+                'damage_reduction': self.damage_reduction_active
+            })
+
+            if self.stamina >= card.cost:
+                self.stamina -= card.cost
+                card.play(game_state, self, target)
+                self.hand.pop(card_index)
+                return True
+            else:
+                print("Not enough AP!")
+        return False
+     #565276
+    def undo_last_action(self, game_state):
+        last_action = self.history.pop()
+        if not last_action:
+            print("No action to undo!")
+            return False
+
+        if last_action['type'] == 'play_card':
+            print(f"\nUNDO: Reverting last card play ({last_action['card'].name})")
+
+            # Restore card to hand
+            self.hand.insert(last_action['card_index'], last_action['card'])
+
+            # Restore stamina
+            self.stamina += last_action['card'].cost
+
+            # Restore player state
+            self.health = last_action['player_health']
+            self.defense = last_action['player_defense']
+            self.fire_shield_active = last_action['fire_shield']
+            self.ice_wall_active = last_action['ice_wall']
+            self.lightning_reflect_active = last_action['lightning_reflect']
+            self.damage_reduction_active = last_action['damage_reduction']
+
+            # Restore status effects
+            self.status_effects = [
+                eff for eff in self.status_effects
+                if str(eff) in last_action['status_effects']
+            ]
+
+            # Restore target health
+            if last_action['target']:
+                last_action['target'].health = last_action['target_health']
+
+            return True
+        return False
+            #5652765
+            def take_damage(self, amount, damage_type="Physical"):
+        if damage_type == "Fire" and self.fire_shield_active:
+            print("Fire attack blocked!")
+            return
+        if damage_type == "Ice" and self.ice_wall_active:
+            print("Ice attack blocked!")
+            return
+
+        final_damage = amount
+        if self.damage_reduction_active[0] > 0:
+            reduction = self.damage_reduction_active[0]
+            final_damage = int(final_damage * (1 - reduction))
+            print(f"Damage reduced by {reduction * 100}%.")
+
+        if damage_type == "Electric" and self.lightning_reflect_active > 0:
+            reflected = int(final_damage * self.lightning_reflect_active)
+            final_damage -= reflected
+            print(f"{self.lightning_reflect_active * 100}% damage reflected.")
+
+        self.health -= max(0, final_damage - self.defense)
+        print(f"{self.name} takes {max(0, final_damage - self.defense)} damage. Remaining HP: {self.health}")
+        #5652765
+    def heal(self, amount):
+        self.health = min(self.health + amount, self.max_health)
+        print(f"{self.name} heals {amount} HP. New HP: {self.health}")
+        #5652765
+    def apply_status_effect(self, effect):
+        self.status_effects.append(effect)
+        effect.apply(self)
+        #5652765
+    def remove_status_effect(self, effect_name):
+        for effect in self.status_effects[:]:
+            if effect.name == effect_name:
+                if hasattr(effect, 'remove'):
+                    effect.remove(self)
+                self.status_effects.remove(effect)
+                print(f"{effect_name} effect removed.")
+        #5652765
+    def has_status_effect(self, effect_name):
+        return any(effect.name == effect_name for effect in self.status_effects)
+        #5652765
+    def begin_turn(self):
+        self.can_act = True
+        self.stamina = min(self.stamina + 3, self.max_stamina)
+        self.defense = 0
+        self.fire_shield_active = False
+        self.ice_wall_active = False
+        self.draw_card()
+        print(f"\n{self.name}'s turn begins. AP: {self.stamina}")
+        #5652765
+    def end_turn(self):
+        for effect in self.status_effects[:]:
+            if effect.tick(self):
+                self.remove_status_effect(effect.name)
+
+        if self.damage_reduction_active[1] > 0:
+            duration_left = self.damage_reduction_active[1] - 1
+            self.damage_reduction_active = (self.damage_reduction_active[0], duration_left)
+            if duration_left <= 0:
+                print("Damage reduction effect ended.")
+                self.damage_reduction_active = (0, 0)
+
+        print(f"{self.name}'s turn ends.")
+        #5652765
+    def show_hand(self):
+        print(f"\n{self.name}'s hand:")
+        for i, card in enumerate(self.hand):
+            print(f"{i + 1}. {card}")
+#5652765        
+class AIPlayer(Player):
+    def __init__(self, name="Computer", max_health=100):
+        super().__init__(name, max_health)
+        self.difficulty = "medium"  # easy, medium, hard
+
+    def make_decision(self, game_state):
+        opponent = game_state.opponent()
+
+        # Check defensive cards first
+        defense_cards = [card for card in self.hand if card.card_type == "Defense"]
+        attack_cards = [card for card in self.hand if card.card_type == "Attack"]
+
+        # Emergency control (low health)
+        if self.health < 0.3 * self.max_health:
+            # Use a healing card if available
+            heal_card = next((card for card in defense_cards if "heal" in card.name.lower()), None)
+            if heal_card and heal_card.cost <= self.stamina:
+                return self.play_card(self.hand.index(heal_card), game_state)
+
+            # Use defense card
+            if defense_cards:
+                # Choose the best defense card (highest block)
+                best_defense = max(defense_cards, key=lambda x: x.block)
+                if best_defense.cost <= self.stamina:
+                    return self.play_card(self.hand.index(best_defense), game_state)
+
+        # Make moves according to your opponent's situation
+        if opponent.status_effects:
+            # If the opponent already has a status effect, focus on dealing direct damage
+            if attack_cards:
+                # Choose the card with the highest damage
+                best_attack = max(attack_cards, key=lambda x: x.damage)
+                if best_attack.cost <= self.stamina:
+                    return self.play_card(self.hand.index(best_attack), game_state, opponent)
+        else:
+            # Prefer cards that apply status effects
+            status_attack_cards = [card for card in attack_cards if card.ability is not None]
+            if status_attack_cards:
+                # Select a random status effect card
+                selected_card = random.choice(status_attack_cards)
+                if selected_card.cost <= self.stamina:
+                    return self.play_card(self.hand.index(selected_card), game_state, opponent)
+
+        # If not enough AP, pass
+        if self.stamina < min(card.cost for card in self.hand if card.cost > 0):
+            return False
+
+        # Play a random card
+        playable_cards = [card for card in self.hand if card.cost <= self.stamina]
+        if playable_cards:
+            # Strategy according to difficulty level
+            if self.difficulty == "easy":
+                card = random.choice(playable_cards)
+            elif self.difficulty == "medium":
+                # Choose better cards
+                card = max(playable_cards, key=lambda x: x.damage if x.card_type == "Attack" else x.block)
+            else:  # hard
+                # Check combinations
+                if any(eff.name == "Defense Reduction" for eff in opponent.status_effects):
+                    # If defense is low, deal high damage
+                    high_dmg = max((c for c in playable_cards if c.card_type == "Attack"),
+                                   key=lambda x: x.damage, default=None)
+                    if high_dmg:
+                        card = high_dmg
+                else:
+                    # First lower your defense, then attack
+                    defense_reducer = next((c for c in playable_cards
+                                            if "ReduceOpponentDefense" in str(c.ability)), None)
+                    if defense_reducer:
+                        card = defense_reducer
+                    else:
+                        card = max(playable_cards, key=lambda x: x.damage if x.card_type == "Attack" else x.block)
+
+            return self.play_card(self.hand.index(card), game_state, opponent if card.card_type == "Attack" else None)
+
+        return False
 
 #5677995
 def load_cards(file_path="cards.json"):
@@ -381,65 +622,64 @@ class LootedGoods:
         self.restore_health = restore_health
 
 # Represents a weapon with upgradeable attributes
+#5677995
 class Weapon:
     def __init__(self, name, base_level_damage):
         self.name = name
-        self.base_level_damage = base_level_damage # Base damage of the weapon
-        self.attributes = []
+        self.base_level_damage = base_level_damage  # Base damage of the weapon
+        self.attributes = []  
 
+# Check if attribute can be added and is viable
+    def can_upgrade(self, attribute):
+        return attribute not in self.attributes
+
+# Add attribute to the weapon if it isn't already applied
     def upgrade(self, attribute):
-        if attribute not in self.attributes:
+        if self.can_upgrade(attribute):
             self.attributes.append(attribute)
+            print(f"{self.name} has obtained the attribute: {attribute} from opponent.")
 
-    # String representation of the weapon for easy printing
+# representing the displaying the weapon as a string
     def __str__(self):
         attributes_list = ", ".join(self.attributes) if self.attributes else "None"
-        return f"Weapon: {self.name} | Damage: {self.base_level_damage} | Attributes: {attributes_list}"
+        return f"Weapon: {self.name} | Damage: {self.base_level_damage} | attributes: {attributes_list}"
 
-# Represents a shield with strength and potential attributes
+
+# Represents a shield with strength and attributes
 class Shield:
-    def __init__(self, strength):
+    def __init__(self, strength, base_level_damage=None):  # base_level_damage not used
         self.strength = strength
         self.attributes = []
-        
-    # Method to upgrade shield's strength or add new attributes
+
+ # Check if the shield can be upgraded with a specific attribute
+    def can_upgrade(self, attribute):
+        return attribute not in self.attributes or attribute == "strength"
+
+    # Apply an upgrade to the shield
     def upgrade(self, attribute):
         if attribute == "strength":
             self.strength += 10
-        elif attribute not in self.attributes:
+            print("Shield strength increased by 10.")
+        elif self.can_upgrade(attribute):
             self.attributes.append(attribute)
+            print(f"Shield obtained attribute: {attribute}.")
 
-    # String representation of the shield
+    # String representation for displaying the shield
     def __str__(self):
         attributes_list = ", ".join(self.attributes) if self.attributes else "None"
-        return f"Shield | Durability: {self.strength} | Attributes: {attributes_list}"
+        return f"Shield | Durability: {self.strength} | attributes: {attributes_list}"
 
-5665548 5677995
-class Armor:
-    def __init__(self, name, defense):
-        self.name = name
-        self.defense = defense
-        self.attributes = []
 
-    def upgrade(self, attribute):
-        if attribute == "defense":
-            self.defense += 5
-        elif attribute not in self.attributes:
-            self.attributes.append(attribute)
-
-    def __str__(self):
-        attributes_list = ", ".join(self.attributes) if self.attributes else "None"
-        return f"Armor: {self.name} | Defense: {self.defense} | Attributes: {attributes_list}"
-5665548 5677995
-
-# Represents an enemy character with lootable attributes
+# Represents an enemy from which the player can loot attributes
 class Enemy:
     def __init__(self, name, health, attributes=None):
         self.name = name
         self.health = health
         self.attributes = attributes if attributes else []
-        self.shield = 0
-        self.stamina = 20
+
+#representation for displaying the enemy 
+    def __str__(self):
+        return f"Enemy: {self.name} | HP: {self.health} | attributes: {', '.join(self.attributes)}"
 
     # String representation of the enemy
     def __str__(self):
@@ -454,110 +694,10 @@ class Enemy:
             actual_damage = damage
 
         self.health = max(self.health - actual_damage, 0)
-5677995
-# Player class with health, stamina, weapon, and shield
-class Player:
-    def __init__(self, name):
-        self.name = name
-        self.max_health = 300
-        self.health = 300
-        self.max_stamina = 50
-        self.stamina = 20
-        self.shield = 0
-        self.weapon = Weapon("Crimson Double Edge Sword", 20)
-        self.shield_item = Shield(20)
-        self.armor = Armor("Knight's Plate", 15)
-        self.inventory_looted_goods = []
-        self.resources = {}
-        }
 
-    #Default deck for player
-    5652765 
-      def create_default_deck(self):
-        default_deck = []
-          
-        cards = [
-            flame_sword_card, ice_spear_card, lightning_strike_card,
-            poison_arrow_card, stone_storm_card, fire_shield_card,
-            ice_wall_card, lightning_reflect_card, poison_cleanse_card,
-            stone_armor_card
-        ]
-          
-        for _ in range(3):  # 3 copies of each card
-            default_deck.extend(cards)
-        random.shuffle(default_deck)
-        return default_deck
-    56562765
-    def draw_card(self): #functionf for drawing card
-        if len(self.hand) < 7 and self.deck:
-            card = self.deck.pop()
-            self.hand.append(card)
-            print(f"{self.name} drew {card.name} card.")
-            return card
-        return None  
-    5652765
-    def play_card(self, card_index, game_state, target=None):
-        if 0 <= card_index < len(self.hand):
-            card = self.hand[card_index]
-            if self.stamina >= card.cost:
-                self.stamina -= card.cost
-                card.play(game_state, self, target)
-                self.hand.pop(card_index)
-                return True
-            else:
-                print("Not enough AP!")
-        return False
-    5652765 5677995
-    def take_damage(self, amount, damage_type="Physical"):
-        if damage_type == "Fire" and self.fire_shield_active:
-            print("Fire attack blocked!")
-            return
-        if damage_type == "Ice" and self.ice_wall_active:
-            print("Ice attack blocked!")
-            return
 
-        final_damage = amount
-        if self.damage_reduction_active[0] > 0:
-            reduction = self.damage_reduction_active[0]
-            final_damage = int(final_damage * (1 - reduction))
-            print(f"Damage reduced by {reduction * 100}%.")
 
-        if damage_type == "Electric" and self.lightning_reflect_active > 0:
-            reflected = int(final_damage * self.lightning_reflect_active)
-            final_damage -= reflected
-            print(f"{self.lightning_reflect_active * 100}% damage reflected.")
-
-        self.health -= max(0, final_damage - self.defense)
-        print(f"{self.name} takes {max(0, final_damage - self.defense)} damage. Remaining HP: {self.health}")
-        
-    5652765
-    def heal(self, amount):
-        self.health = min(self.health + amount, self.max_health)
-        print(f"{self.name} heals {amount} HP. New HP: {self.health}")
-        
-    5652765
-    def apply_status_effect(self, effect):
-        self.status_effects.append(effect)
-        effect.apply(self)
-        
-    5652765
-    def remove_status_effect(self, effect_name):
-        for effect in self.status_effects[:]:
-            if effect.name == effect_name:
-                if hasattr(effect, 'remove'):
-                    effect.remove(self)
-                self.status_effects.remove(effect)
-                print(f"{effect_name} effect removed.")
-    5652765
-    def begin_turn(self):
-        self.can_act = True
-        self.stamina = min(self.stamina + 3, self.max_stamina)
-        self.defense = 0
-        self.fire_shield_active = False
-        self.ice_wall_active = False
-        self.draw_card()
-        print(f"\n{self.name}'s turn begins. AP: {self.stamina}")
-
+#!!!! check
     5677995 
     # String representation of the player showing stats, weapon, and shield
     def __str__(self):
@@ -618,7 +758,7 @@ class Player:
                     break
                 elif choice == 'a':
                     self.armor.upgrade(attribute)
-5677995
+#5677995
 #Tree structure - skills progression
 class SkillNode:
     def __init__(self, name, unlocked=False):
@@ -663,8 +803,8 @@ class WorldMap:
     def display_map(self):
         for location, neighbors in self.graph.items():
             print(f"{location} → {', '.join(neighbors)}")
-5677995
-5665548
+#5677995
+#5665548
 class Game:
     def __init__(self, base):
         self.base = base
@@ -773,9 +913,9 @@ Billy and 5665548
             else:
                 self.canvas.coords(self.card, 200, 50, 600, 250)
                 self.canvas.coords(self.card_text, 400, 150)
-5665548
+#5665548
 
-5665548
+#5665548
     def apply_decision_effects(self, direction):
         effects = self.current_decision["effects"]
         for resource, change in effects.items():
@@ -872,10 +1012,10 @@ Billy and 5665548
                 if selected_card.name != "Time Warp":
                     self.enemy_turn()
                 self.prepare_combat()
-5665548
+#5665548
 
 
-5677995
+#5677995
 #Looted Goods
 class LootedGoods:
     def __init__(self, name, restore_health=0):
@@ -885,67 +1025,6 @@ class LootedGoods:
     def __str__(self):
         return f"{self.name} (+{self.restore_health} HP)"
 
-#Weapon Class
-class Weapon:
-    def __init__(self, name, base_level_damage):
-        self.name = name
-        self.base_level_damage = base_level_damage
-        self.attributes = []
-
-    def upgrade(self, attribute):
-        if attribute not in self.attributes:
-            self.attributes.append(attribute)
-            print(f"{self.name} has obtained the attribute: {attribute} from opponent.")
-
-    def __str__(self):
-        attr = ", ".join(self.attributes) if self.attributes else "None"
-        return f"Weapon: {self.name} | Damage: {self.base_level_damage} | Attributes: {attr}"
-
-#Shield Class
-class Shield:
-    def __init__(self, strength):
-        self.strength = strength
-        self.attributes = []
-
-    def upgrade(self, attribute):
-        if attribute == "strength":
-            self.strength += 10
-            print("Shield strength increased by 10.")
-        elif attribute not in self.attributes:
-            self.attributes.append(attribute)
-            print(f"Shield obtained attribute: {attribute}.")
-
-    def __str__(self):
-        attr = ", ".join(self.attributes) if self.attributes else "None"
-        return f"Shield | Strength: {self.strength} | Attributes: {attr}"
-
-#armour class
-class Armour:
-    def __init__(self, defense):
-        self.defense = defense
-        self.attributes = []
-
-    def upgrade(self, attribute):
-        if attribute == "defense":
-            self.defense += 10
-            print("Armour defense increased by 10.")
-        elif attribute not in self.attributes:
-            self.attributes.append(attribute)
-            print(f"Armour gained attribute: {attribute}.")
-
-    def __str__(self):
-        attr = ", ".join(self.attributes) if self.attributes else "None"
-        return f"Armour | Defense: {self.defense} | Attributes: {attr}"
-
-#Enemy Class
-class Enemy:
-    def __init__(self, name, health, attributes=None):
-        self.name = name
-        self.health = health
-        self.attributes = attributes if attributes else []
-
-    def __str__(self):
-        return f"Enemy: {self.name} | HP: {self.health} | Attributes: {', '.join(self.attributes)}"
 
 # Player Class
 class Player:
@@ -1008,10 +1087,10 @@ class Player:
     def defeat_enemy(self, enemy):
         print(f"{self.name} defeated {enemy.name}!")
         self.loot_enemy_attributes(enemy)
-5677995
+#5677995
 
 
-5665548
+#5665548
     def enemy_turn(self):
         attack_damage = random.randint(10, 20)
         self.player.inflicted_attack(attack_damage)
@@ -1070,9 +1149,9 @@ class Player:
         self.canvas.unbind("<Button-1>")
         self.canvas.unbind("<B1-Motion>")
         self.canvas.unbind("<ButtonRelease-1>")
-5665548
+#5665548
 
-5652765 5677995
+#5652765 5677995
 # Game state class
 class GameState:
     def __init__(self, player1, player2):
@@ -1146,18 +1225,22 @@ class GameState:
                 status += f" | Effects: {', '.join(str(effect) for effect in player.status_effects)}"
             print(status)
         print("=" * 40)
-5652765
+#5652765
 # Game initialization
 def main():
-    print("Welcome to  Redemption!")
+    print("Welcome to REDEMPTION!")
     player_name = input("Please enter your name: ")
 
+    difficulty = input("Select AI difficulty (easy, medium, hard): ").lower()
+    while difficulty not in ["easy", "medium", "hard"]:
+        difficulty = input("Invalid difficulty. Please choose easy, medium or hard: ").lower()
+
     player = Player(player_name)
-    computer = Player("Computer")
+    computer = AIPlayer("Computer")
+    computer.difficulty = difficulty
 
     game = GameState(player, computer)
-    
-    5652765
+
     # Starting hand
     for _ in range(5):
         player.draw_card()
@@ -1166,70 +1249,13 @@ def main():
     while not game.is_game_over():
         game.display_status()
         game.play_turn()
+        time.sleep(1)
 
     game.display_status()
     winner = player if player.health > 0 else computer
     print(f"\nGame over! Winner: {winner.name}")
 
-5677995
-# Represents a weapon with upgradeable attributes
-class Weapon:
-    def __init__(self, name, base_level_damage):
-        self.name = name
-        self.base_level_damage = base_level_damage  # Base damage of the weapon
-        self.attributes = []  
 
-# Check if attribute can be added and is viable
-    def can_upgrade(self, attribute):
-        return attribute not in self.attributes
-
-# Add attribute to the weapon if it isn't already applied
-    def upgrade(self, attribute):
-        if self.can_upgrade(attribute):
-            self.attributes.append(attribute)
-            print(f"{self.name} has obtained the attribute: {attribute} from opponent.")
-
-# representing the displaying the weapon as a string
-    def __str__(self):
-        attributes_list = ", ".join(self.attributes) if self.attributes else "None"
-        return f"Weapon: {self.name} | Damage: {self.base_level_damage} | attributes: {attributes_list}"
-
-
-# Represents a shield with strength and attributes
-class Shield:
-    def __init__(self, strength, base_level_damage=None):  # base_level_damage not used
-        self.strength = strength
-        self.attributes = []
-
- # Check if the shield can be upgraded with a specific attribute
-    def can_upgrade(self, attribute):
-        return attribute not in self.attributes or attribute == "strength"
-
-    # Apply an upgrade to the shield
-    def upgrade(self, attribute):
-        if attribute == "strength":
-            self.strength += 10
-            print("Shield strength increased by 10.")
-        elif self.can_upgrade(attribute):
-            self.attributes.append(attribute)
-            print(f"Shield obtained attribute: {attribute}.")
-
-    # String representation for displaying the shield
-    def __str__(self):
-        attributes_list = ", ".join(self.attributes) if self.attributes else "None"
-        return f"Shield | Durability: {self.strength} | attributes: {attributes_list}"
-
-
-# Represents an enemy from which the player can loot attributes
-class Enemy:
-    def __init__(self, name, health, attributes=None):
-        self.name = name
-        self.health = health
-        self.attributes = attributes if attributes else []
-
-#representation for displaying the enemy 
-    def __str__(self):
-        return f"Enemy: {self.name} | HP: {self.health} | attributes: {', '.join(self.attributes)}"
 
 
 # Represents the player character with health, items, and upgrade functionality
