@@ -1,0 +1,220 @@
+
+class Game:
+    def __init__(self, base):
+        self.base = base
+        self.base.title("Fantasy Card Game")
+        self.base.geometry("1000x700")
+        self.main_frame = tk.Frame(base)
+        self.main_frame.pack(fill=tk.BOTH, expand=True)
+        self.player = Player("Hero")
+        self.current_enemy = Enemy("Goblin", 100, ["fire resistance"])
+        self.create_card_decks()
+        self.player_hand = self.draw_initial_hand()
+        self.decision_deck = [
+            {"description": "",
+             "effects": {}},
+            {"description": "",
+             "effects": {}},
+            {"description": "",
+             "effects": {}},
+            {"description": "",
+             "effects": {}},
+            {"description": "",
+             "effects": {}}
+        ]
+        self.setup_ui()
+        self.current_phase = "resource"
+        self.draw_decision_card()
+
+    #5665548
+
+
+#Billy and 5665548
+
+#5665548
+
+
+def draw_initial_hand(self):
+    hand = []
+    for _ in range(5):
+        if self.full_deck:
+            card = random.choice(self.full_deck)
+            self.full_deck.remove(card)
+            hand.append(card)
+    return hand
+
+
+def setup_ui(self):
+    self.resource_frame = tk.Frame(self.main_frame)
+    self.resource_frame.pack(fill=tk.X, padx=10, pady=10)
+    self.resource_labels = {}
+    col = 0
+    for resource, value in self.player.resources.items():
+        label = tk.Label(self.resource_frame, text=f"{resource}: {value}", font=("Arial", 12))
+        label.grid(row=0, column=col, padx=10)
+        self.resource_labels[resource] = label
+        col += 1
+    self.game_area = tk.Frame(self.main_frame, bg="lightblue")
+    self.game_area.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+    self.canvas = tk.Canvas(self.game_area, bg="lightblue", width=800, height=400)
+    self.canvas.pack(fill=tk.BOTH, expand=True)
+    self.status_frame = tk.Frame(self.main_frame)
+    self.status_frame.pack(fill=tk.X, padx=10, pady=10)
+    self.player_stats = tk.Label(self.status_frame, text=str(self.player), font=("Arial", 10))
+    self.player_stats.pack(side=tk.LEFT)
+    self.enemy_stats = tk.Label(self.status_frame, text=str(self.current_enemy), font=("Arial", 10))
+    self.enemy_stats.pack(side=tk.RIGHT)
+    self.button_frame = tk.Frame(self.main_frame)
+    self.button_frame.pack(fill=tk.X, padx=10, pady=10)
+    self.combat_button = tk.Button(self.button_frame, text="Start Combat", command=self.start_combat)
+    self.combat_button.pack(side=tk.LEFT, padx=5)
+    self.inventory_button = tk.Button(self.button_frame, text="Use Item", command=self.use_item)
+    self.inventory_button.pack(side=tk.LEFT, padx=5)
+    self.warning_label = tk.Label(self.main_frame, text="", fg="red", font=("Arial", 12))
+    self.warning_label.pack(pady=5)
+
+
+def draw_decision_card(self):
+    if self.decision_deck:
+        self.current_decision = random.choice(self.decision_deck)
+        self.canvas.delete("all")
+        self.card = self.canvas.create_rectangle(200, 50, 600, 250, fill="white", outline="black")
+        self.card_text = self.canvas.create_text(400, 150, text=self.current_decision["description"],
+                                                 font=("Arial", 14), width=380)
+        self.canvas.create_text(150, 300, text="Swipe Left: No", fill="red", font=("Arial", 14))
+        self.canvas.create_text(650, 300, text="Swipe Right: Yes", fill="green", font=("Arial", 14))
+        self.canvas.bind("<Button-1>", self.on_card_click)
+        self.canvas.bind("<B1-Motion>", self.on_card_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_card_release)
+        self.start_x = None
+    else:
+        self.game_over("No more decisions available!")
+
+
+def on_card_click(self, event):
+    self.start_x = event.x
+
+
+def on_card_drag(self, event):
+    if self.card and self.start_x:
+        dx = event.x - self.start_x
+        self.canvas.move(self.card, dx, 0)
+        self.canvas.move(self.card_text, dx, 0)
+        self.start_x = event.x
+
+
+def on_card_release(self, event):
+    if self.card and self.start_x:
+        card_x1, _, card_x2, _ = self.canvas.coords(self.card)
+        card_width = card_x2 - card_x1
+
+        if card_x2 < 400 - (card_width * 0.3):
+            self.apply_decision_effects("left")
+        elif card_x1 > 400 + (card_width * 0.3):
+            self.apply_decision_effects("right")
+        else:
+            self.canvas.coords(self.card, 200, 50, 600, 250)
+            self.canvas.coords(self.card_text, 400, 150)
+
+
+# 5665548
+
+# 5665548
+def apply_decision_effects(self, direction):
+    effects = self.current_decision["effects"]
+    for resource, change in effects.items():
+        if direction == "right":
+            self.player.resources[resource] += change
+        else:
+            self.player.resources[resource] -= change * 0.5
+
+    for resource, value in self.player.resources.items():
+        self.player.resources[resource] = max(0, min(10, value))
+        self.resource_labels[resource].config(text=f"{resource}: {int(self.player.resources[resource])}")
+
+    warning_message = ""
+    for resource, value in self.player.resources.items():
+        if value <= 2:
+            warning_message += f"Warning: {resource} is too low! "
+        elif value >= 8:
+            warning_message += f"Warning: {resource} is too high! "
+    self.warning_label.config(text=warning_message)
+
+    for resource, value in self.player.resources.items():
+        if value <= 0:
+            self.game_over(f"{resource} has fallen to critical levels!")
+            return
+        elif value >= 10:
+            self.game_over(f"{resource} has reached maximum capacity!")
+            return
+
+    self.decision_deck.append(self.current_decision)
+    self.current_phase = "combat"
+    self.canvas.delete("all")
+    self.prepare_combat()
+
+
+def prepare_combat(self):
+    self.canvas.delete("all")
+    self.canvas.create_text(400, 30, text=f"Combat: {self.player.name} vs {self.current_enemy.name}",
+                            font=("Arial", 16))
+    y = 60
+    for i, card in enumerate(self.player_hand):
+        card_rect = self.canvas.create_rectangle(50, y, 750, y + 60, fill="lightgreen")
+        self.canvas.create_text(400, y + 30, text=str(card), font=("Arial", 10))
+        self.canvas.tag_bind(card_rect, "<Button-1>", lambda event, idx=i: self.use_card(idx))
+        y += 70
+    self.canvas.create_text(900, 150, text=f"{self.current_enemy.name}\nHP: {self.current_enemy.health}",
+                            font=("Arial", 14))
+    self.update_stats()
+
+
+def use_card(self, card_index):
+    if card_index < len(self.player_hand):
+        selected_card = self.player_hand[card_index]
+
+        if isinstance(selected_card, AttackCard):
+            success = self.player.inflict_attack(selected_card, self.current_enemy)
+            if success:
+                self.player_hand.pop(card_index)
+                if self.full_deck:
+                    new_card = random.choice(self.full_deck)
+                    self.full_deck.remove(new_card)
+                    self.player_hand.append(new_card)
+                self.enemy_turn()
+                if self.current_enemy.health <= 0:
+                    self.combat_victory()
+                elif self.player.health <= 0:
+                    self.game_over("You have been defeated!")
+                else:
+                    self.prepare_combat()
+
+        elif isinstance(selected_card, DefenseCard):
+            self.player.increase_shield(selected_card.block_value)
+            self.player.stamina -= selected_card.energy
+            self.player_hand.pop(card_index)
+            if self.full_deck:
+                new_card = random.choice(self.full_deck)
+                self.full_deck.remove(new_card)
+                self.player_hand.append(new_card)
+            self.enemy_turn()
+            self.prepare_combat()
+
+        elif isinstance(selected_card, SpellCard):
+            if selected_card.name == "Mana Burst":
+                self.player.stamina += 2
+            elif selected_card.name == "Summon Element":
+                if self.full_deck:
+                    new_card = random.choice(self.full_deck)
+                    self.full_deck.remove(new_card)
+                    self.player_hand.append(new_card)
+
+            self.player.stamina -= selected_card.energy
+            self.player_hand.pop(card_index)
+            if self.full_deck:
+                new_card = random.choice(self.full_deck)
+                self.full_deck.remove(new_card)
+                self.player_hand.append(new_card)
+            if selected_card.name != "Time Warp":
+                self.enemy_turn()
+            self.prepare_combat()
