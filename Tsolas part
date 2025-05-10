@@ -240,3 +240,21 @@ class Player:
     def defeat_enemy(self, enemy):
         print(f"{self.name} defeated {enemy.name}!")
         self.loot_enemy_attributes(enemy)
+
+class Player:
+    def __init__(self, name="Player", max_health=100):
+        self.name = name
+        self.max_health = max_health
+        self.health = max_health
+        self.defense = 0
+        self.deck = self.create_default_deck()
+        self.hand = []
+        self.stamina = 0
+        self.max_stamina = 10
+        self.status_effects = []
+        self.can_act = True
+        self.fire_shield_active = False
+        self.ice_wall_active = False
+        self.lightning_reflect_active = 0
+        self.damage_reduction_active = (0, 0)
+        self.history = ActionHistory()
