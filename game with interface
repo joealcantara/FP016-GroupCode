@@ -1,0 +1,1330 @@
+import pygame
+import sys
+import random
+import copy
+from enum import Enum
+
+# start pygame
+pygame.init()
+pygame.font.init()
+
+# fix
+SCREEN_WIDTH = 1200
+SCREEN_HEIGHT = 800
+CARD_WIDTH = 150
+CARD_HEIGHT = 200
+FPS = 60
+AI_DELAY = 800  # AI delay (ms)
+
+# colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+YELLOW = (255, 255, 0)
+GRAY = (200, 200, 200)
+DARK_GRAY = (100, 100, 100)
+LIGHT_BLUE = (173, 216, 230)
+LIGHT_RED = (255, 182, 193)
+LIGHT_GREEN = (144, 238, 144)
+PURPLE = (128, 0, 128)
+BROWN = (139, 69, 19)
+
+# fonts
+SMALL_FONT = pygame.font.SysFont('Arial', 14)
+MEDIUM_FONT = pygame.font.SysFont('Arial', 18)
+LARGE_FONT = pygame.font.SysFont('Arial', 24)
+TITLE_FONT = pygame.font.SysFont('Arial', 32)
+
+
+class CardType(Enum):
+    ATTACK = "Attack"
+    DEFENSE = "Defense"
+
+
+class StatusEffect:
+    def __init__(self, name, duration):
+        self.name = name
+        self.duration = duration
+
+    def apply(self, target):
+        pass
+
+    def tick(self, target):
+        self.duration -= 1
+        return self.duration <= 0
+
+    def __str__(self):
+        return f"{self.name} ({self.duration} turns)"
+
+
+class BurnEffect(StatusEffect):
+    def __init__(self, duration=2, damage_per_turn=5):
+        super().__init__("Burn", duration)
+        self.damage_per_turn = damage_per_turn
+
+    def apply(self, target):
+        target.game.log(f"{target.name} is burning!")
+        target.take_damage(self.damage_per_turn, "Fire")
+
+    def tick(self, target):
+        target.game.log(f"{target.name} takes {self.damage_per_turn} burn damage.")
+        target.take_damage(self.damage_per_turn, "Fire")
+        return super().tick(target)
+
+
+class StunEffect(StatusEffect):
+    def __init__(self, duration=1):
+        super().__init__("Stun", duration)
+
+    def apply(self, target):
+        target.game.log(f"{target.name} is stunned and can't move!")
+        target.can_act = False
+
+    def remove(self, target):
+        target.can_act = True
+        target.game.log(f"{target.name} is no longer stunned.")
+
+
+class PoisonEffect(StatusEffect):
+    def __init__(self, duration=3, damage_sequence=[5, 10, 15]):
+        super().__init__("Poison", duration)
+        self.damage_sequence = list(damage_sequence)
+        self.current_tick = 0
+
+    def apply(self, target):
+        target.game.log(f"{target.name} is poisoned!")
+        self.tick(target)
+
+    def tick(self, target):
+        if self.current_tick < len(self.damage_sequence):
+            damage = self.damage_sequence[self.current_tick]
+            target.game.log(f"{target.name} takes {damage} poison damage.")
+            target.take_damage(damage, "Poison")
+            self.current_tick += 1
+        return super().tick(target)
+
+
+class DefenseReductionEffect(StatusEffect):
+    def __init__(self, duration=1, reduction_percentage=30):
+        super().__init__("Defense Reduction", duration)
+        self.reduction_percentage = reduction_percentage
+        self.original_defense = 0
+
+    def apply(self, target):
+        target.game.log(f"{target.name}'s defense is reduced by {self.reduction_percentage}%!")
+        self.original_defense = target.defense
+        target.defense -= int(target.defense * (self.reduction_percentage / 100))
+
+    def remove(self, target):
+        target.defense = self.original_defense
+        target.game.log(f"{target.name}'s defense returns to normal.")
+
+
+class SlowEffect(StatusEffect):
+    def __init__(self, duration=1):
+        super().__init__("Slow", duration)
+
+    def apply(self, target):
+        target.game.log(f"{target.name} is slowed!")
+        target.can_act = False
+
+    def remove(self, target):
+        target.can_act = True
+        target.game.log(f"{target.name} is no longer slowed.")
+
+
+class SpecialAbilities:
+    class ApplyBurn:
+        def __init__(self, duration=2, damage_per_turn=5):
+            self.duration = duration
+            self.damage_per_turn = damage_per_turn
+
+        def activate(self, game_state, source, target):
+            if target:
+                burn = BurnEffect(self.duration, self.damage_per_turn)
+                target.apply_status_effect(burn)
+
+    class PreventAttackNextTurn:
+        def activate(self, game_state, source, target):
+            if target:
+                stun = StunEffect(duration=1)
+                target.apply_status_effect(stun)
+
+    class ApplyStun:
+        def __init__(self, chance=0.5, duration=1):
+            self.chance = chance
+            self.duration = duration
+
+        def activate(self, game_state, source, target):
+            if target and random.random() < self.chance:
+                stun = StunEffect(self.duration)
+                target.apply_status_effect(stun)
+                target.game.log(f"{target.name} is stunned!")
+            else:
+                target.game.log(f"{target.name} resisted the stun.")
+
+    class ApplyPoison:
+        def __init__(self, duration=3, damage_sequence=[5, 10, 15]):
+            self.duration = duration
+            self.damage_sequence = damage_sequence
+
+        def activate(self, game_state, source, target):
+            if target:
+                poison = PoisonEffect(self.duration, self.damage_sequence)
+                target.apply_status_effect(poison)
+
+    class ReduceOpponentDefense:
+        def __init__(self, duration=1, reduction_percentage=30):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, game_state, source, target):
+            if target:
+                defense_reduction = DefenseReductionEffect(self.duration, self.reduction_percentage)
+                target.apply_status_effect(defense_reduction)
+
+    class BlockFireAttack:
+        def activate(self, game_state, source, target=None):
+            source.game.log(f"{source.name} blocks fire attacks.")
+            source.fire_shield_active = True
+
+    class BlockIceAttackAndSlow:
+        def activate(self, game_state, source, target=None):
+            source.game.log(f"{source.name} blocks ice attacks and slows the opponent.")
+            source.ice_wall_active = True
+            if target:
+                slow = SlowEffect(duration=1)
+                target.apply_status_effect(slow)
+
+    class ReflectElectricDamage:
+        def __init__(self, reflect_percentage=0.5):
+            self.reflect_percentage = reflect_percentage
+
+        def activate(self, game_state, source, target=None):
+            source.game.log(f"{source.name} reflects {int(self.reflect_percentage * 100)}% of electric damage.")
+            source.lightning_reflect_active = self.reflect_percentage
+
+    class ClearPoisonAndHeal:
+        def __init__(self, heal_amount=5):
+            self.heal_amount = heal_amount
+
+        def activate(self, game_state, source, target=None):
+            if source.has_status_effect("Poison"):
+                source.remove_status_effect("Poison")
+                source.game.log(f"Poison cleared from {source.name}.")
+            source.heal(self.heal_amount)
+            source.game.log(f"{source.name} healed {self.heal_amount} HP.")
+
+    class ReduceIncomingDamage:
+        def __init__(self, duration=2, reduction_percentage=50):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, game_state, source, target=None):
+            source.game.log(f"{source.name} reduces incoming damage by {self.reduction_percentage}%.")
+            source.damage_reduction_active = (self.reduction_percentage / 100, self.duration)
+
+
+class Card:
+    def __init__(self, name, card_type, cost=0, damage=0, block=0, description="", ability=None, tags=None, level=1):
+        self.name = name
+        self.card_type = card_type
+        self.cost = cost
+        self.damage = damage
+        self.block = block
+        self.description = description
+        self.ability = ability
+        self.tags = tags if tags is not None else []
+        self.level = level
+        self.selected = False
+        self.highlighted = False
+        self.rect = None
+
+    def copy(self):
+        return Card(
+            self.name,
+            self.card_type,
+            self.cost,
+            self.damage,
+            self.block,
+            self.description,
+            copy.deepcopy(self.ability),
+            self.tags.copy(),
+            self.level
+        )
+
+    def can_upgrade(self):
+        return self.level < 3
+
+    def upgrade(self):
+        if not self.can_upgrade():
+            return False
+
+        self.level += 1
+        if self.name == "Flame Sword":
+            if self.level == 2:
+                self.damage += 5
+                if hasattr(self.ability, 'damage_per_turn'):
+                    self.ability.damage_per_turn += 2
+                self.description = "Burns opponent for 2 turns (+7 damage/turn)"
+            elif self.level == 3:
+                self.damage += 5
+                self.cost -= 1
+                self.description = "Burns opponent for 2 turns (+7 damage/turn), reduced cost"
+
+        elif self.name == "Ice Spear":
+            if self.level == 2:
+                self.damage += 5
+                self.description = "Prevents opponent from attacking next turn, increased damage"
+            elif self.level == 3:
+                self.cost -= 1
+                self.description = "Prevents opponent from attacking next turn, reduced cost"
+
+        elif self.name == "Lightning Strike":
+            if self.level == 2:
+                if hasattr(self.ability, 'chance'):
+                    self.ability.chance = min(0.75, self.ability.chance + 0.25)
+                self.description = "75% chance to stun opponent for 1 turn"
+            elif self.level == 3:
+                self.damage += 5
+                self.description = "75% chance to stun opponent for 1 turn, increased damage"
+
+        elif self.name == "Poison Arrow":
+            if self.level == 2:
+                if hasattr(self.ability, 'damage_sequence'):
+                    self.ability.damage_sequence = [d + 2 for d in self.ability.damage_sequence]
+                self.description = "Poisons opponent for 3 turns (7→12→17 damage)"
+            elif self.level == 3:
+                if hasattr(self.ability, 'duration'):
+                    self.ability.duration += 1
+                self.description = "Poisons opponent for 4 turns (7→12→17→22 damage)"
+
+        elif self.name == "Stone Storm":
+            if self.level == 2:
+                self.damage += 5
+                if hasattr(self.ability, 'reduction_percentage'):
+                    self.ability.reduction_percentage += 10
+                self.description = "Reduces opponent's defense by 40% for 1 turn"
+            elif self.level == 3:
+                if hasattr(self.ability, 'duration'):
+                    self.ability.duration += 1
+                self.description = "Reduces opponent's defense by 40% for 2 turns"
+
+        elif self.name == "Fire Shield":
+            if self.level == 2:
+                self.block += 5
+                self.description = "Completely blocks fire attacks, increased block"
+            elif self.level == 3:
+                self.cost -= 1
+                self.description = "Completely blocks fire attacks, reduced cost"
+
+        elif self.name == "Ice Wall":
+            if self.level == 2:
+                self.block += 5
+                self.description = "Blocks ice attacks and slows opponent, increased block"
+            elif self.level == 3:
+                if hasattr(self.ability, 'duration'):
+                    self.ability.duration += 1
+                self.description = "Blocks ice attacks and slows opponent for 2 turns"
+
+        elif self.name == "Lightning Reflect":
+            if self.level == 2:
+                if hasattr(self.ability, 'reflect_percentage'):
+                    self.ability.reflect_percentage = 0.75
+                self.description = "Reflects 75% of electric damage"
+            elif self.level == 3:
+                self.block += 5
+                self.description = "Reflects 75% of electric damage, increased block"
+
+        elif self.name == "Poison Cleanse":
+            if self.level == 2:
+                if hasattr(self.ability, 'heal_amount'):
+                    self.ability.heal_amount += 5
+                self.description = "Clears poison and heals 10 HP"
+            elif self.level == 3:
+                self.cost -= 1
+                self.description = "Clears poison and heals 10 HP, reduced cost"
+
+        elif self.name == "Stone Armor":
+            if self.level == 2:
+                if hasattr(self.ability, 'reduction_percentage'):
+                    self.ability.reduction_percentage = 75
+                self.description = "Reduces incoming damage by 75% for 2 turns"
+            elif self.level == 3:
+                if hasattr(self.ability, 'duration'):
+                    self.ability.duration += 1
+                self.description = "Reduces incoming damage by 75% for 3 turns"
+
+        return True
+
+    def play(self, game_state, source, target=None):
+        if self.card_type == "Attack" and target:
+            # Calculate damage
+            damage = self.damage
+
+            # Apply damage
+            target.take_damage(damage, self.tags[0] if self.tags else "Physical")
+            game_state.log(f"{source.name} uses {self.name} on {target.name} for {damage} damage!")
+
+            # Apply ability if exists
+            if self.ability:
+                self.ability.activate(game_state, source, target)
+        elif self.card_type == "Defense":
+            # Apply block
+            source.defense += self.block
+            game_state.log(f"{source.name} uses {self.name} and gains {self.block} defense!")
+
+            # Apply ability if exists
+            if self.ability:
+                self.ability.activate(game_state, source, target)
+
+    def render(self, surface, x, y, width, height):
+        self.rect = pygame.Rect(x, y, width, height)
+
+        # Kart background
+        if self.selected:
+            pygame.draw.rect(surface, YELLOW, self.rect)
+        elif self.highlighted:
+            pygame.draw.rect(surface, LIGHT_BLUE, self.rect)
+        else:
+            pygame.draw.rect(surface, WHITE, self.rect)
+
+        pygame.draw.rect(surface, BLACK, self.rect, 2)
+
+        # Kart type color
+        type_color = RED if self.card_type == "Attack" else GREEN
+
+        # cad info
+        name_text = MEDIUM_FONT.render(f"{self.name} (Lvl {self.level})", True, BLACK)
+        surface.blit(name_text, (x + 5, y + 5))
+
+        type_text = SMALL_FONT.render(self.card_type, True, type_color)
+        surface.blit(type_text, (x + 5, y + 30))
+
+        cost_text = SMALL_FONT.render(f"Cost: {self.cost}", True, BLACK)
+        surface.blit(cost_text, (x + 5, y + 50))
+
+        if self.damage > 0:
+            damage_text = SMALL_FONT.render(f"Damage: {self.damage}", True, BLACK)
+            surface.blit(damage_text, (x + 5, y + 70))
+        if self.block > 0:
+            block_text = SMALL_FONT.render(f"Block: {self.block}", True, BLACK)
+            surface.blit(block_text, (x + 5, y + 90))
+
+        # explanation
+        words = self.description.split(' ')
+        lines = []
+        current_line = ""
+        for word in words:
+            test_line = current_line + word + " "
+            if SMALL_FONT.size(test_line)[0] < width - 10:
+                current_line = test_line
+            else:
+                lines.append(current_line)
+                current_line = word + " "
+        if current_line:
+            lines.append(current_line)
+
+        for i, line in enumerate(lines):
+            desc_text = SMALL_FONT.render(line, True, BLACK)
+            surface.blit(desc_text, (x + 5, y + 110 + i * 15))
+
+        # tags
+        for i, tag in enumerate(self.tags):
+            tag_color = {
+                "Fire": RED,
+                "Ice": BLUE,
+                "Electric": YELLOW,
+                "Poison": PURPLE,
+                "Earth": BROWN
+            }.get(tag, BLACK)
+
+            tag_text = SMALL_FONT.render(tag, True, tag_color)
+            surface.blit(tag_text, (x + width - tag_text.get_width() - 5, y + height - tag_text.get_height() - 5))
+
+
+# card definitions
+flame_sword_card = Card(
+    name="Flame Sword", card_type="Attack", cost=2, damage=15,
+    description="Burns opponent for 2 turns (+5 damage/turn)",
+    ability=SpecialAbilities.ApplyBurn(duration=2, damage_per_turn=5),
+    tags=["Fire"])
+
+ice_spear_card = Card(
+    name="Ice Spear", card_type="Attack", cost=1, damage=10,
+    description="Prevents opponent from attacking next turn",
+    ability=SpecialAbilities.PreventAttackNextTurn(),
+    tags=["Ice"])
+
+lightning_strike_card = Card(
+    name="Lightning Strike", card_type="Attack", cost=2, damage=20,
+    description="50% chance to stun opponent for 1 turn",
+    ability=SpecialAbilities.ApplyStun(chance=0.5),
+    tags=["Electric"])
+
+poison_arrow_card = Card(
+    name="Poison Arrow", card_type="Attack", cost=1, damage=12,
+    description="Poisons opponent for 3 turns (5→10→15 damage)",
+    ability=SpecialAbilities.ApplyPoison(duration=3, damage_sequence=[5, 10, 15]),
+    tags=["Poison"])
+
+stone_storm_card = Card(
+    name="Stone Storm", card_type="Attack", cost=2, damage=18,
+    description="Reduces opponent's defense by 30% for 1 turn",
+    ability=SpecialAbilities.ReduceOpponentDefense(duration=1, reduction_percentage=30),
+    tags=["Earth"])
+
+fire_shield_card = Card(
+    name="Fire Shield", card_type="Defense", cost=2, block=20,
+    description="Completely blocks fire attacks",
+    ability=SpecialAbilities.BlockFireAttack(),
+    tags=["Fire"])
+
+ice_wall_card = Card(
+    name="Ice Wall", card_type="Defense", cost=1, block=15,
+    description="Blocks ice attacks and slows opponent",
+    ability=SpecialAbilities.BlockIceAttackAndSlow(),
+    tags=["Ice"])
+
+lightning_reflect_card = Card(
+    name="Lightning Reflect", card_type="Defense", cost=1, block=10,
+    description="Reflects 50% of electric damage",
+    ability=SpecialAbilities.ReflectElectricDamage(reflect_percentage=0.5),
+    tags=["Electric"])
+
+poison_cleanse_card = Card(
+    name="Poison Cleanse", card_type="Defense", cost=1, block=0,
+    description="Clears poison and heals 5 HP",
+    ability=SpecialAbilities.ClearPoisonAndHeal(heal_amount=5),
+    tags=["Poison"])
+
+stone_armor_card = Card(
+    name="Stone Armor", card_type="Defense", cost=3, block=25,
+    description="Reduces incoming damage by 50% for 2 turns",
+    ability=SpecialAbilities.ReduceIncomingDamage(duration=2, reduction_percentage=50),
+    tags=["Earth"])
+
+
+class ActionHistory:
+    def __init__(self):
+        self.stack = []
+
+    def push(self, action):
+        self.stack.append(action)
+
+    def pop(self):
+        return self.stack.pop() if self.stack else None
+
+
+class Player:
+    def __init__(self, name="Player", max_health=100, game=None):
+        self.name = name
+        self.max_health = max_health
+        self.health = max_health
+        self.defense = 0
+        self.deck = self.create_default_deck()
+        self.hand = []
+        self.stamina = 0
+        self.max_stamina = 10
+        self.status_effects = []
+        self.can_act = True
+        self.fire_shield_active = False
+        self.ice_wall_active = False
+        self.lightning_reflect_active = 0
+        self.damage_reduction_active = (0, 0)
+        self.game = game
+        self.history = ActionHistory()
+        self.cards_played_this_turn = 0
+        self.cards_upgraded_this_turn = 0
+
+    def create_default_deck(self):
+        default_deck = []
+        cards = [
+            flame_sword_card, ice_spear_card, lightning_strike_card,
+            poison_arrow_card, stone_storm_card, fire_shield_card,
+            ice_wall_card, lightning_reflect_card, poison_cleanse_card,
+            stone_armor_card
+        ]
+        for _ in range(3):
+            default_deck.extend([copy.deepcopy(card) for card in cards])
+        random.shuffle(default_deck)
+        return default_deck
+
+    def draw_card(self):
+        if len(self.hand) < 7 and self.deck:
+            card = self.deck.pop()
+            self.hand.append(card)
+            if self.game:
+                self.game.log(f"{self.name} drew {card.name} card.")
+            else:
+                print(f"{self.name} drew {card.name} card.")
+            return card
+        return None
+
+    def play_card(self, card_index, game_state, target=None):
+        if 0 <= card_index < len(self.hand):
+            card = self.hand[card_index]
+
+            # save history
+            self.history.push({
+                'type': 'play_card',
+                'card': card,
+                'card_index': card_index,
+                'target': target,
+                'player_health': self.health,
+                'target_health': target.health if target else None,
+                'player_stamina': self.stamina,
+                'player_defense': self.defense,
+                'status_effects': [str(e) for e in self.status_effects],
+                'fire_shield': self.fire_shield_active,
+                'ice_wall': self.ice_wall_active,
+                'lightning_reflect': self.lightning_reflect_active,
+                'damage_reduction': self.damage_reduction_active
+            })
+
+            if self.stamina >= card.cost:
+                self.stamina -= card.cost
+                card.play(game_state, self, target)
+                self.hand.pop(card_index)
+                self.cards_played_this_turn += 1 # increase when card is played
+                return True
+            else:
+                self.game.log("Not enough AP!")
+        return False
+
+    def undo_last_action(self, game_state):
+        last_action = self.history.pop()
+        if not last_action:
+            self.game.log("No action to undo!")
+            return False
+
+        if last_action['type'] == 'play_card':
+            self.game.log(f"\nUNDO: Reverting last card play ({last_action['card'].name})")
+            self.hand.insert(last_action['card_index'], last_action['card'])
+            self.stamina += last_action['card'].cost
+            self.health = last_action['player_health']
+            self.defense = last_action['player_defense']
+            self.fire_shield_active = last_action['fire_shield']
+            self.ice_wall_active = last_action['ice_wall']
+            self.lightning_reflect_active = last_action['lightning_reflect']
+            self.damage_reduction_active = last_action['damage_reduction']
+            self.status_effects = [
+                eff for eff in self.status_effects
+                if str(eff) in last_action['status_effects']
+            ]
+            if last_action['target']:
+                last_action['target'].health = last_action['target_health']
+            self.cards_played_this_turn -= 1 # increase when undo
+            return True
+        return False
+
+    def take_damage(self, amount, damage_type="Physical"):
+        if damage_type == "Fire" and self.fire_shield_active:
+            self.game.log("Fire attack blocked!")
+            return
+        if damage_type == "Ice" and self.ice_wall_active:
+            self.game.log("Ice attack blocked!")
+            return
+
+        final_damage = amount
+        if self.damage_reduction_active[0] > 0:
+            reduction = self.damage_reduction_active[0]
+            final_damage = int(final_damage * (1 - reduction))
+            self.game.log(f"Damage reduced by {reduction * 100}%.")
+
+        if damage_type == "Electric" and self.lightning_reflect_active > 0:
+            reflected = int(final_damage * self.lightning_reflect_active)
+            final_damage -= reflected
+            self.game.log(f"{self.lightning_reflect_active * 100}% damage reflected.")
+
+        self.health -= max(0, final_damage - self.defense)
+        self.game.log(f"{self.name} takes {max(0, final_damage - self.defense)} damage. Remaining HP: {self.health}")
+
+    def heal(self, amount):
+        self.health = min(self.health + amount, self.max_health)
+        self.game.log(f"{self.name} heals {amount} HP. New HP: {self.health}")
+
+    def apply_status_effect(self, effect):
+        self.status_effects.append(effect)
+        effect.apply(self)
+
+    def remove_status_effect(self, effect_name):
+        for effect in self.status_effects[:]:
+            if effect.name == effect_name:
+                if hasattr(effect, 'remove'):
+                    effect.remove(self)
+                self.status_effects.remove(effect)
+                self.game.log(f"{effect_name} effect removed.")
+
+    def has_status_effect(self, effect_name):
+        return any(effect.name == effect_name for effect in self.status_effects)
+
+    def show_upgrade_options(self):
+        card_counts = {}
+        for card in self.hand:
+            if card.name in card_counts:
+                card_counts[card.name].append(card)
+            else:
+                card_counts[card.name] = [card]
+
+        upgrade_options = []
+        for card_name, cards in card_counts.items():
+            if len(cards) >= 2 and cards[0].can_upgrade():
+                upgrade_options.append((card_name, cards))
+
+        return upgrade_options
+
+    def upgrade_card(self, card_name):
+        cards_to_remove = []
+        upgrade_successful = False
+        for card in self.hand[:]:
+            if card.name == card_name and len(cards_to_remove) < 2:
+                cards_to_remove.append(card)
+
+        if len(cards_to_remove) == 2:
+            for card in cards_to_remove:
+                self.hand.remove(card)
+            upgraded_card = cards_to_remove[0].copy()
+            upgraded_card.upgrade()
+            self.hand.append(upgraded_card)
+            self.cards_upgraded_this_turn += 1
+            upgrade_successful = True
+        return upgrade_successful
+
+    def begin_turn(self):
+        self.can_act = True
+        self.defense = 0
+        self.fire_shield_active = False
+        self.ice_wall_active = False
+        self.stamina = min(self.stamina + 3, self.max_stamina)
+
+        cards_to_draw = self.cards_played_this_turn + self.cards_upgraded_this_turn
+
+        print(f"{self.name} round started. Card played: {self.cards_played_this_turn}, Upgraded card: {self.cards_upgraded_this_turn}, Çekilecek kart: {cards_to_draw}") # DEBUG
+
+        for _ in range(cards_to_draw):
+            drawn_card = self.draw_card()
+            print(f"{self.name} drew card: {drawn_card.name if drawn_card else 'The deck is empty'}") # DEBUG
+
+        self.cards_played_this_turn = 0
+        self.cards_upgraded_this_turn = 0
+
+        print(f"{self.name} End of round hand: {[card.name for card in self.hand]}") # DEBUG
+        self.game.log(f"\n{self.name}'s turn begins. AP: {self.stamina}/{self.max_stamina}")
+
+    def end_turn(self):
+        for effect in self.status_effects[:]:
+            if effect.tick(self):
+                self.remove_status_effect(effect.name)
+
+        if self.damage_reduction_active[1] > 0:
+            duration_left = self.damage_reduction_active[1] - 1
+            self.damage_reduction_active = (self.damage_reduction_active[0], duration_left)
+            if duration_left <= 0:
+                self.game.log("Damage reduction effect ended.")
+                self.damage_reduction_active = (0, 0)
+
+        self.game.log(f"{self.name}'s turn ends. Remaining AP: {self.stamina}")
+
+    def render(self, surface, x, y, width, height, is_current_player=False):
+        # player background
+        pygame.draw.rect(surface, LIGHT_BLUE if is_current_player else WHITE, (x, y, width, height))
+        pygame.draw.rect(surface, BLACK, (x, y, width, height), 2)
+
+        # player name
+        name_text = LARGE_FONT.render(self.name, True, BLACK)
+        surface.blit(name_text, (x + 10, y + 10))
+
+        # health bar
+        health_pct = self.health / self.max_health
+        health_width = int((width - 20) * health_pct)
+        health_color = GREEN if health_pct > 0.5 else YELLOW if health_pct > 0.2 else RED
+
+        pygame.draw.rect(surface, DARK_GRAY, (x + 10, y + 50, width - 20, 20))
+        pygame.draw.rect(surface, health_color, (x + 10, y + 50, health_width, 20))
+
+        health_text = MEDIUM_FONT.render(f"{self.health}/{self.max_health}", True, BLACK)
+        surface.blit(health_text, (x + width // 2 - health_text.get_width() // 2, y + 50))
+
+        # AP
+        stamina_text = MEDIUM_FONT.render(f"AP: {self.stamina}/{self.max_stamina}", True, BLACK)
+        surface.blit(stamina_text, (x + 10, y + 80))
+
+        # defence
+        defense_text = MEDIUM_FONT.render(f"Defense: {self.defense}", True, BLACK)
+        surface.blit(defense_text, (x + 10, y + 110))
+
+        # status effects
+        if self.status_effects:
+            effects_text = MEDIUM_FONT.render("Status Effects:", True, BLACK)
+            surface.blit(effects_text, (x + 10, y + 140))
+
+            for i, effect in enumerate(self.status_effects):
+                effect_text = SMALL_FONT.render(str(effect), True, RED)
+                surface.blit(effect_text, (x + 20, y + 170 + i * 20))
+
+        # special defence
+        special_text = ""
+        if self.fire_shield_active:
+            special_text += "Fire Shield "
+        if self.ice_wall_active:
+            special_text += "Ice Wall "
+        if self.lightning_reflect_active > 0:
+            special_text += f"Lightning Reflect({int(self.lightning_reflect_active * 100)}%) "
+        if self.damage_reduction_active[0] > 0:
+            special_text += f"Damage Reduction({int(self.damage_reduction_active[0] * 100)}%) "
+
+        if special_text:
+            special_def_text = SMALL_FONT.render(f"Active: {special_text}", True, BLUE)
+            surface.blit(special_def_text, (x + 10, y + height - 30))
+
+
+class AIPlayer(Player):
+    def __init__(self, name="Computer", max_health=100, game=None, difficulty="medium"):
+        super().__init__(name, max_health, game)
+        self.difficulty = difficulty
+
+    def can_play_card(self):
+        return any(card.cost <= self.stamina for card in self.hand)
+
+    def make_decision(self, game_state):
+        opponent = game_state.opponent()
+
+        if not self.can_play_card():
+            self.game.log(f"{self.name} has no playable cards and passes.")
+            return False
+
+        # Check defense cards
+        defense_cards = [card for card in self.hand if card.card_type == "Defense"]
+        attack_cards = [card for card in self.hand if card.card_type == "Attack"]
+
+        #Emergency control (low health)
+        if self.health < 0.3 * self.max_health:
+            # Use healing card if available
+            heal_card = next((card for card in defense_cards if "heal" in card.name.lower()), None)
+            if heal_card and heal_card.cost <= self.stamina:
+                return self.play_card(self.hand.index(heal_card), game_state)
+
+            # Use your best defense card
+            if defense_cards:
+                best_defense = max(defense_cards, key=lambda x: x.block)
+                if best_defense.cost <= self.stamina:
+                    return self.play_card(self.hand.index(best_defense), game_state)
+
+        # Make moves according to your opponent's situation
+        if opponent.status_effects:
+            # If the opponent already has a status effect, deal direct damage
+            if attack_cards:
+                best_attack = max(attack_cards, key=lambda x: x.damage)
+                if best_attack.cost <= self.stamina:
+                    return self.play_card(self.hand.index(best_attack), game_state, opponent)
+        else:
+            # Prefer cards that apply status effects
+            status_attack_cards = [card for card in attack_cards if card.ability is not None]
+            if status_attack_cards:
+                selected_card = random.choice(status_attack_cards)
+                if selected_card.cost <= self.stamina:
+                    return self.play_card(self.hand.index(selected_card), game_state, opponent)
+
+        # Play a random card
+        playable_cards = [card for card in self.hand if card.cost <= self.stamina]
+        if playable_cards:
+            if self.difficulty == "easy":
+                card = random.choice(playable_cards)
+            elif self.difficulty == "medium":
+                card = max(playable_cards, key=lambda x: x.damage if x.card_type == "Attack" else x.block)
+            else:  # hard
+                if any(eff.name == "Defense Reduction" for eff in opponent.status_effects):
+                    high_dmg = max((c for c in playable_cards if c.card_type == "Attack"),
+                                   key=lambda x: x.damage, default=None)
+                    if high_dmg:
+                        card = high_dmg
+                else:
+                    defense_reducer = next((c for c in playable_cards
+                                            if "ReduceOpponentDefense" in str(c.ability)), None)
+                    if defense_reducer:
+                        card = defense_reducer
+                    else:
+                        card = max(playable_cards, key=lambda x: x.damage if x.card_type == "Attack" else x.block)
+
+            return self.play_card(self.hand.index(card), game_state, opponent if card.card_type == "Attack" else None)
+
+        return False
+
+
+class GameState:
+    def __init__(self, player1, player2):
+        background = pygame.image.load("battle_background.jpg").convert()
+        bg_width, bg_height = background.get_size()
+        screen_width, screen_height = SCREEN_WIDTH, SCREEN_HEIGHT
+
+        bg_ratio = bg_width / bg_height
+        screen_ratio = screen_width / screen_height
+
+        if bg_ratio > screen_ratio:
+            # Image wider, fit height to screen, center width
+            new_height = screen_height
+            new_width = int(new_height * bg_ratio)
+            resized_bg = pygame.transform.scale(background, (new_width, new_height))
+            blit_x = (screen_width - new_width) // 2
+            self.battle_background = resized_bg
+            self.blit_position = (blit_x, 0)
+        else:
+            # Image higher or equal proportions, fit width to screen, center height
+            new_width = screen_width
+            new_height = int(new_width / bg_ratio)
+            resized_bg = pygame.transform.scale(background, (new_width, new_height))
+            blit_y = (screen_height - new_height) // 2
+            self.battle_background = resized_bg
+            self.blit_position = (0, blit_y)
+
+        self.players = [player1, player2]
+
+
+        self.current_player_index = 0
+        self.turn = 1
+        self.log_messages = []
+        self.game_over = False
+        self.winner = None
+        self.waiting_for_input = False
+        self.ai_thinking = False
+        self.last_ai_time = 0
+        self.screen = None
+        self.running = True
+
+    def current_player(self):
+        return self.players[self.current_player_index]
+
+    def opponent(self):
+        return self.players[1 - self.current_player_index]
+
+    def switch_player(self):
+        self.current_player_index = 1 - self.current_player_index
+        current_player = self.current_player()
+        print(f"Sıra değişti: {current_player.name}")
+
+
+        self.log(
+            f"\n--- {current_player.name}'s turn starts --- AP: {current_player.stamina}/{current_player.max_stamina}")
+        current_player.begin_turn()
+
+    def process_ai_turn(self):
+        current = self.current_player()
+        if not isinstance(current, AIPlayer) or self.game_over:
+            return
+
+        current_time = pygame.time.get_ticks()
+        if current_time - self.last_ai_time < AI_DELAY:
+            return
+
+        self.last_ai_time = current_time
+
+        if current.stamina <= 0 or not current.hand:
+            self.end_turn()
+            return
+
+        if not current.make_decision(self):
+            self.log(f"{current.name} chooses to pass.")
+            self.end_turn()
+            return
+
+    def play_turn(self):
+        current = self.current_player()
+        current.begin_turn()
+
+        if isinstance(current, AIPlayer):
+            self.waiting_for_input = False
+            self.ai_thinking = True
+            self.last_ai_time = pygame.time.get_ticks()
+        else:
+            self.waiting_for_input = True
+            self.ai_thinking = False
+
+    def end_turn(self):
+        current = self.current_player()
+        current.end_turn()
+        self.switch_player()
+        self.turn += 1
+
+        # Game end control
+        if any(player.health <= 0 for player in self.players):
+            self.game_over = True
+            self.winner = next((player for player in self.players if player.health > 0), None)
+
+    def log(self, message):
+        self.log_messages.append(message)
+        if len(self.log_messages) > 10:
+            self.log_messages.pop(0)
+
+    def show_upgrade_interface(self):
+        current_player = self.current_player()
+        upgrade_options = current_player.show_upgrade_options()
+
+        if not upgrade_options:
+            self.log("No upgrade options available! Need 2 copies of same card.")
+            return
+
+        # Create an overlay surface
+        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 180))
+        self.screen.blit(overlay, (0, 0))
+
+        # Draw upgrade interface
+        pygame.draw.rect(self.screen, WHITE, (SCREEN_WIDTH // 2 - 250, SCREEN_HEIGHT // 2 - 200, 500, 400))
+        pygame.draw.rect(self.screen, BLACK, (SCREEN_WIDTH // 2 - 250, SCREEN_HEIGHT // 2 - 200, 500, 400), 2)
+
+        title = LARGE_FONT.render("Upgrade Cards", True, BLACK)
+        self.screen.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, SCREEN_HEIGHT // 2 - 180))
+
+        info = SMALL_FONT.render("Select a card to upgrade (consumes 2 copies)", True, BLACK)
+        self.screen.blit(info, (SCREEN_WIDTH // 2 - info.get_width() // 2, SCREEN_HEIGHT // 2 - 140))
+
+        # Draw upgrade options
+        option_rects = []
+        for i, (card_name, cards) in enumerate(upgrade_options):
+            base_card = cards[0]
+            upgraded = base_card.copy()
+            upgraded.upgrade()
+
+            y_pos = SCREEN_HEIGHT // 2 - 100 + i * 80
+            rect = pygame.Rect(SCREEN_WIDTH // 2 - 200, y_pos, 400, 70)
+            option_rects.append((rect, card_name))
+
+            # Draw option background
+            pygame.draw.rect(self.screen, LIGHT_BLUE if i % 2 == 0 else LIGHT_GREEN, rect)
+            pygame.draw.rect(self.screen, BLACK, rect, 1)
+
+            # Draw card info
+            name_text = MEDIUM_FONT.render(f"{card_name} (x{len(cards)})", True, BLACK)
+            self.screen.blit(name_text, (rect.x + 10, rect.y + 5))
+
+            current_stats = f"Current: {base_card.damage if base_card.damage else base_card.block}"
+            current_text = SMALL_FONT.render(current_stats, True, BLACK)
+            self.screen.blit(current_text, (rect.x + 10, rect.y + 25))
+
+            upgraded_stats = f"Upgraded: {upgraded.damage if upgraded.damage else upgraded.block}"
+            upgraded_text = SMALL_FONT.render(upgraded_stats, True, BLACK)
+            self.screen.blit(upgraded_text, (rect.x + 10, rect.y + 45))
+
+        # Draw cancel button
+        cancel_rect = pygame.Rect(SCREEN_WIDTH // 2 - 50, SCREEN_HEIGHT // 2 + 150, 100, 40)
+        pygame.draw.rect(self.screen, RED, cancel_rect)
+        pygame.draw.rect(self.screen, BLACK, cancel_rect, 2)
+        cancel_text = MEDIUM_FONT.render("Cancel", True, BLACK)
+        self.screen.blit(cancel_text, (cancel_rect.x + 50 - cancel_text.get_width() // 2,
+                                       cancel_rect.y + 20 - cancel_text.get_height() // 2))
+
+        pygame.display.flip()
+
+        # Wait for player selection
+        waiting = True
+        while waiting:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    waiting = False
+                    self.running = False
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    mouse_pos = pygame.mouse.get_pos()
+
+                    # Check if clicked on an option
+                    for rect, card_name in option_rects:
+                        if rect.collidepoint(mouse_pos):
+                            if current_player.upgrade_card(card_name):
+                                self.log(f"Upgraded {card_name}!")
+                            else:
+                                self.log("Upgrade failed!")
+                            waiting = False
+                            break
+
+                    # Check if clicked on cancel
+                    if cancel_rect.collidepoint(mouse_pos):
+                        waiting = False
+                        break
+
+    def render(self, surface):
+        # Clear screen
+        surface.blit(self.battle_background, self.blit_position)
+        surface.blit(self.battle_background, (0, 0))
+
+
+        # Title
+        title_text = TITLE_FONT.render("REDEMPTION", True, BLACK)
+        surface.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 10))
+
+        # Turn counter
+        turn_text = MEDIUM_FONT.render(f"Turn {self.turn}", True, BLACK)
+        surface.blit(turn_text, (SCREEN_WIDTH // 2 - turn_text.get_width() // 2, 50))
+
+        # Players
+        player1 = self.players[0]
+        player2 = self.players[1]
+
+        is_player1_turn = self.current_player_index == 0
+        player1.render(surface, 50, 100, 300, 200, is_player1_turn)
+        player2.render(surface, SCREEN_WIDTH - 350, 100, 300, 200, not is_player1_turn)
+
+        # turn
+        current_player = self.current_player()
+        if current_player.hand and not isinstance(current_player, AIPlayer):
+            hand_title = MEDIUM_FONT.render(
+                f"{current_player.name}'s Hand (AP: {current_player.stamina}/{current_player.max_stamina})", True,
+                BLACK)
+            surface.blit(hand_title, (50, 350))
+
+            card_width = CARD_WIDTH
+            card_height = CARD_HEIGHT
+            spacing = 10
+            total_width = len(current_player.hand) * (card_width + spacing) - spacing
+            start_x = (SCREEN_WIDTH - total_width) // 2
+
+            for i, card in enumerate(current_player.hand):
+                card_x = start_x + i * (card_width + spacing)
+                card_y = 400
+                card.render(surface, card_x, card_y, card_width, card_height)
+
+        # game log
+        log_title = MEDIUM_FONT.render("Game Log:", True, BLACK)
+        surface.blit(log_title, (50, 650))
+
+        for i, message in enumerate(self.log_messages[-5:]):
+            log_text = SMALL_FONT.render(message, True, BLACK)
+            surface.blit(log_text, (50, 680 + i * 20))
+
+        # buttons
+        if self.waiting_for_input and not self.game_over:
+            # End Turn button
+            pygame.draw.rect(surface, GREEN, (SCREEN_WIDTH - 150, 650, 100, 40))
+            end_text = MEDIUM_FONT.render("End Turn", True, BLACK)
+            surface.blit(end_text,
+                         (SCREEN_WIDTH - 150 + 50 - end_text.get_width() // 2, 650 + 20 - end_text.get_height() // 2))
+
+            # Undo button
+            pygame.draw.rect(surface, YELLOW, (SCREEN_WIDTH - 150, 700, 100, 40))
+            undo_text = MEDIUM_FONT.render("Undo", True, BLACK)
+            surface.blit(undo_text,
+                         (SCREEN_WIDTH - 150 + 50 - undo_text.get_width() // 2, 700 + 20 - undo_text.get_height() // 2))
+
+            # Upgrade button (only after first turn)
+            if self.turn > 1:
+                pygame.draw.rect(surface, PURPLE, (SCREEN_WIDTH - 150, 600, 100, 40))
+                upgrade_text = MEDIUM_FONT.render("Upgrade", True, BLACK)
+                surface.blit(upgrade_text,
+                             (SCREEN_WIDTH - 150 + 50 - upgrade_text.get_width() // 2,
+                              600 + 20 - upgrade_text.get_height() // 2))
+
+        # end game screen
+        if self.game_over:
+            overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))
+            surface.blit(overlay, (0, 0))
+
+            if self.winner:
+                game_over_text = TITLE_FONT.render(f"{self.winner.name} Wins!", True, WHITE)
+                surface.blit(game_over_text,
+                             (SCREEN_WIDTH // 2 - game_over_text.get_width() // 2, SCREEN_HEIGHT // 2 - 50))
+
+            restart_text = LARGE_FONT.render("Click anywhere to restart", True, WHITE)
+            surface.blit(restart_text, (SCREEN_WIDTH // 2 - restart_text.get_width() // 2, SCREEN_HEIGHT // 2 + 50))
+
+
+class Game:
+    def __init__(self):
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        pygame.display.set_caption("REDEMPTION - Card Game")
+        self.clock = pygame.time.Clock()
+        self.running = True
+        self.state = None
+        self.difficulty = "medium"
+        self.player_name = "Player"
+
+        # show menu
+        self.show_menu()
+
+    def log(self, message):
+        if self.state:
+            self.state.log(message)
+
+    def show_menu(self):
+        menu_active = True
+        name_input = ""
+        difficulty_buttons = [
+            {"text": "Easy", "rect": pygame.Rect(SCREEN_WIDTH // 2 - 100, 300, 200, 50), "difficulty": "easy"},
+            {"text": "Medium", "rect": pygame.Rect(SCREEN_WIDTH // 2 - 100, 370, 200, 50), "difficulty": "medium"},
+            {"text": "Hard", "rect": pygame.Rect(SCREEN_WIDTH // 2 - 100, 440, 200, 50), "difficulty": "hard"}
+        ]
+        start_button = pygame.Rect(SCREEN_WIDTH // 2 - 100, 510, 200, 50)
+
+        input_active = False
+
+        while menu_active and self.running:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+                    menu_active = False
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:  # Sol tık
+                        mouse_pos = pygame.mouse.get_pos()
+
+                        # Name entry field
+                        name_rect = pygame.Rect(SCREEN_WIDTH // 2 - 100, 200, 200, 40)
+                        if name_rect.collidepoint(mouse_pos):
+                            input_active = True
+                        else:
+                            input_active = False
+
+                        # Difficulty buttons
+                        for button in difficulty_buttons:
+                            if button["rect"].collidepoint(mouse_pos):
+                                self.difficulty = button["difficulty"]
+
+                        # Start button
+                        if start_button.collidepoint(mouse_pos) and name_input:
+                            self.player_name = name_input
+                            menu_active = False
+                            self.start_game()
+                elif event.type == pygame.KEYDOWN and input_active:
+                    if event.key == pygame.K_RETURN:
+                        input_active = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        name_input = name_input[:-1]
+                    else:
+                        name_input += event.unicode
+
+            # Draw menu
+            self.screen.fill(WHITE)
+
+            # Title
+            title_text = TITLE_FONT.render("REDEMPTION", True, BLACK)
+            self.screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 50))
+
+            # Name entry
+            name_label = MEDIUM_FONT.render("Enter your name:", True, BLACK)
+            self.screen.blit(name_label, (SCREEN_WIDTH // 2 - 100, 170))
+
+            pygame.draw.rect(self.screen, LIGHT_BLUE if input_active else WHITE,
+                             (SCREEN_WIDTH // 2 - 100, 200, 200, 40))
+            pygame.draw.rect(self.screen, BLACK, (SCREEN_WIDTH // 2 - 100, 200, 200, 40), 2)
+
+            name_surface = MEDIUM_FONT.render(name_input, True, BLACK)
+            self.screen.blit(name_surface, (SCREEN_WIDTH // 2 - 90, 210))
+
+            # Difficulty selection
+            difficulty_label = MEDIUM_FONT.render("Select difficulty:", True, BLACK)
+            self.screen.blit(difficulty_label, (SCREEN_WIDTH // 2 - 100, 270))
+
+            for button in difficulty_buttons:
+                color = GREEN if self.difficulty == button["difficulty"] else GRAY
+                pygame.draw.rect(self.screen, color, button["rect"])
+                pygame.draw.rect(self.screen, BLACK, button["rect"], 2)
+
+                text = MEDIUM_FONT.render(button["text"], True, BLACK)
+                self.screen.blit(text, (button["rect"].x + button["rect"].width // 2 - text.get_width() // 2,
+                                        button["rect"].y + button["rect"].height // 2 - text.get_height() // 2))
+
+            # Start button
+            pygame.draw.rect(self.screen, GREEN if name_input else GRAY, start_button)
+            pygame.draw.rect(self.screen, BLACK, start_button, 2)
+
+            start_text = MEDIUM_FONT.render("Start Game", True, BLACK)
+            self.screen.blit(start_text, (start_button.x + start_button.width // 2 - start_text.get_width() // 2,
+                                          start_button.y + start_button.height // 2 - start_text.get_height() // 2))
+
+            pygame.display.flip()
+            self.clock.tick(FPS)
+
+    def start_game(self):
+        player = Player(self.player_name, game=self)
+        computer = AIPlayer("Computer", game=self, difficulty=self.difficulty)
+
+        # Starting hand (6 cards)
+        for _ in range(6):
+            player.draw_card()
+            computer.draw_card()
+
+        self.state = GameState(player, computer)
+        self.state.screen = self.screen
+        self.state.running = self.running
+
+        # Initial AP
+        player.stamina = 0
+        computer.stamina = 0
+
+        # Start the first round
+        self.state.play_turn()
+        self.game_loop()
+
+    def game_loop(self):
+        while self.running:
+            current_time = pygame.time.get_ticks()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    self.handle_click(pygame.mouse.get_pos())
+
+            # Process AI moves
+            if self.state and isinstance(self.state.current_player(), AIPlayer):
+                self.state.process_ai_turn()
+
+            # Oyunu çiz
+            if self.state:
+                self.state.render(self.screen)
+                pygame.display.flip()
+
+            self.clock.tick(FPS)
+
+    def handle_click(self, mouse_pos):
+        if self.state.game_over:
+            self.show_menu()
+            return
+
+        if not self.state.waiting_for_input:
+            return
+
+        current_player = self.state.current_player()
+
+        # Check buttons first
+        end_button = pygame.Rect(SCREEN_WIDTH - 150, 650, 100, 40)
+        if end_button.collidepoint(mouse_pos):
+            self.state.end_turn()
+            return
+
+        undo_button = pygame.Rect(SCREEN_WIDTH - 150, 700, 100, 40)
+        if undo_button.collidepoint(mouse_pos):
+            current_player.undo_last_action(self.state)
+            return
+
+        upgrade_button = pygame.Rect(SCREEN_WIDTH - 150, 600, 100, 40)
+        if upgrade_button.collidepoint(mouse_pos) and self.state.turn > 1:
+            self.state.show_upgrade_interface()
+            return
+
+        # Check cards
+        card_width = CARD_WIDTH
+        card_height = CARD_HEIGHT
+        spacing = 10
+        total_width = len(current_player.hand) * (card_width + spacing) - spacing
+        start_x = (SCREEN_WIDTH - total_width) // 2
+
+        for i, card in enumerate(current_player.hand):
+            card_rect = pygame.Rect(start_x + i * (card_width + spacing), 400, card_width, card_height)
+            if card_rect.collidepoint(mouse_pos):
+                if card.cost <= current_player.stamina:
+                    if card.card_type == "Attack":
+                        if self.state.opponent():  # Make sure there's a target
+                            current_player.play_card(i, self.state, self.state.opponent())
+                    else:
+                        current_player.play_card(i, self.state)
+                else:
+                    self.state.log("Not enough AP to play this card!")
+                break
+
+
+# start the game
+if __name__ == "__main__":
+    game = Game()
+    pygame.quit()
+    sys.exit()
