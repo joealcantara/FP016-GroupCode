@@ -441,6 +441,13 @@ class Player:
             return card
         return None
 
+    def maintain_hand_size(self):
+        """Ensure player has exactly 6 cards by drawing if needed"""
+        while len(self.hand) < 6 and self.deck:
+            self.draw_card()
+        if len(self.hand) < 6:
+            print(f"{self.name} can't draw more cards (deck is empty)!")
+
     def play_card(self, card_index, game_state, target=None):
         if 0 <= card_index < len(self.hand):
             card = self.hand[card_index]
@@ -542,7 +549,7 @@ class Player:
         self.defense = 0
         self.fire_shield_active = False
         self.ice_wall_active = False
-        self.draw_card()
+        self.maintain_hand_size()
         print(f"\n{self.name}'s turn begins. AP: {self.stamina}")
 
     def end_turn(self):
@@ -695,6 +702,7 @@ class GameState:
                     break
                 time.sleep(0.8)
         else:
+            current.maintain_hand_size()
             current.show_hand()
             while current.stamina > 0 and current.hand:
                 playable_cards = [card for card in current.hand if card.cost <= current.stamina]
@@ -798,7 +806,8 @@ def main():
 
     game = GameState(player, computer)
 
-    for _ in range(5):
+    # Initial draw to start with 6 cards each
+    for _ in range(6):
         player.draw_card()
         computer.draw_card()
 
