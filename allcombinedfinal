@@ -1048,7 +1048,7 @@ class GameState:
             self.initialize_card(scenes, disable_down_swipe=False)
             return False
 
-# Draw Functions (Original, #5665548)
+# Draw Functions (Original, #5665548 till the end)
 def draw_boss(screen, boss_type):
     boss_text = font_title.render(boss_type.capitalize(), True, WHITE)
     boss_rect = boss_text.get_rect(center=(WIDTH // 2, 100))
