@@ -1,0 +1,1413 @@
+import pygame
+import sys
+import json
+import os
+import textwrap
+import random
+
+# Contributors: #5652765 (status effects, abilities, AI, cards), #5665548 (UI inspiration), #5677995 (loot, skill tree), #tsola (action history), Billy (cards)
+
+# Constants
+WIDTH, HEIGHT = 1280, 720
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+BLUE = (0, 0, 255)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+GOLD = (255, 215, 0)
+CARD_BEIGE = (245, 245, 220)
+CARD_BROWN = (139, 69, 19)
+
+try:
+    pygame.init()
+except Exception as e:
+    print(f"Error: Failed to initialize Pygame: {e}")
+    sys.exit(1)
+
+try:
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Redemption: Card Adventure")
+except Exception as e:
+    print(f"Error: Failed to set display mode: {e}. Trying fallback resolution.")
+    try:
+        screen = pygame.display.set_mode((800, 600))
+        WIDTH, HEIGHT = 800, 600
+    except Exception as e:
+        print(f"Error: Fallback resolution failed: {e}")
+        pygame.quit()
+        sys.exit(1)
+
+try:
+    font_title = pygame.font.Font(None, 72)
+    font_body = pygame.font.Font(None, 36)
+except Exception as e:
+    print(f"Error: Failed to load fonts: {e}")
+    pygame.quit()
+    sys.exit(1)
+
+# SkillNode (Pathway Tree) (#5677995)
+class SkillNode:
+    def __init__(self, name, unlocked=False):
+        self.name = name
+        self.unlocked = unlocked
+        self.children = []
+
+    def add_child(self, child_node):
+        self.children.append(child_node)
+
+    def unlock(self):
+        if self.unlocked:
+            print(f"Skill '{self.name}' already unlocked.")
+            return False
+        self.unlocked = True
+        print(f"Skill '{self.name}' has been unlocked!")
+        return True
+
+    def save_state(self):
+        return {
+            "name": self.name,
+            "unlocked": self.unlocked,
+            "children": [child.save_state() for child in self.children]
+        }
+
+    def load_state(self, state):
+        self.name = state["name"]
+        self.unlocked = state["unlocked"]
+        self.children = []
+        for child_state in state.get("children", []):
+            child = SkillNode(child_state["name"], child_state["unlocked"])
+            child.load_state(child_state)
+            self.add_child(child)
+
+    def display_tree(self, surface, x, y, level=0):
+        indent = 50 * level
+        status = "✓" if self.unlocked else "✗"
+        text = font_body.render(f"{self.name} [{status}]", True, WHITE)
+        surface.blit(text, (x + indent, y))
+        for i, child in enumerate(self.children):
+            child.display_tree(surface, x, y + 40 * (i + 1), level + 1)
+
+# Status Effects (#5652765)
+# Status Effects (#5652765)
+class StatusEffect:
+    def __init__(self, name, duration):
+        self.name = name
+        self.duration = duration
+
+    def apply(self, target):
+        pass
+
+    def tick(self, target):
+        self.duration -= 1
+        return self.duration <= 0
+
+    def __str__(self):
+        return f"{self.name} ({self.duration} turns)"
+
+class BurnEffect(StatusEffect):
+    def __init__(self, duration, damage_per_turn):
+        super().__init__("Burn", duration)
+        self.damage_per_turn = damage_per_turn
+
+    def apply(self, target):
+        print(f"{target.name} is burning!")
+        target.take_damage(self.damage_per_turn, "Fire")
+
+    def tick(self, target):
+        print(f"{target.name} takes {self.damage_per_turn} burn damage.")
+        target.take_damage(self.damage_per_turn, "Fire")
+        return super().tick(target)
+
+class StunEffect(StatusEffect):
+    def __init__(self, duration=1):
+        super().__init__("Stun", duration)
+
+    def apply(self, target):
+        print(f"{target.name} is stunned and can't move!")
+        target.can_act = False
+
+    def tick(self, target):
+        self.duration -= 1
+        if self.duration <= 0:
+            target.can_act = True
+            print(f"{target.name} is no longer stunned.")
+        return self.duration <= 0
+
+class PoisonEffect(StatusEffect):
+    def __init__(self, duration, damage_sequence):
+        super().__init__("Poison", duration)
+        self.damage_sequence = list(damage_sequence)
+        self.current_tick = 0
+
+    def apply(self, target):
+        print(f"{target.name} is poisoned!")
+        self.tick(target)
+
+    def tick(self, target):
+        if self.current_tick < len(self.damage_sequence):
+            damage = self.damage_sequence[self.current_tick]
+            print(f"{target.name} takes {damage} poison damage.")
+            target.take_damage(damage, "Poison")
+            self.current_tick += 1
+        return super().tick(target)
+
+class DefenseReductionEffect(StatusEffect):
+    def __init__(self, duration, reduction_percentage):
+        super().__init__("Defense Reduction", duration)
+        self.reduction_percentage = reduction_percentage
+        self.original_defense = 0
+
+    def apply(self, target):
+        if hasattr(target, 'defense'):
+            print(f"{target.name}'s defense is reduced by {self.reduction_percentage}%!")
+            self.original_defense = target.defense
+            target.defense -= int(target.defense * (self.reduction_percentage / 100))
+        else:
+            print(f"{target.name} has no defense to reduce!")
+
+    def remove(self, target):
+        if hasattr(target, 'defense'):
+            target.defense = self.original_defense
+            print(f"{target.name}'s defense returns to normal.")
+
+class SlowEffect(StatusEffect):
+    def __init__(self, duration=1):
+        super().__init__("Slow", duration)
+
+    def apply(self, target):
+        print(f"{target.name} is slowed!")
+        target.can_act = False
+
+    def tick(self, target):
+        self.duration -= 1
+        if self.duration <= 0:
+            target.can_act = True
+            print(f"{target.name} is no longer slowed.")
+        return self.duration <= 0
+# Special Abilities (#5652765)
+# Special Abilities (#5652765)
+class SpecialAbilities:
+    class ApplyBurn:
+        def __init__(self, duration=2, damage_per_turn=5):
+            self.duration = duration
+            self.damage_per_turn = damage_per_turn
+
+        def activate(self, game_state, source, target):
+            if target:
+                burn = BurnEffect(self.duration, self.damage_per_turn)
+                target.apply_status_effect(burn)
+
+    class PreventAttackNextTurn:
+        def activate(self, game_state, source, target):
+            if target:
+                stun = StunEffect(duration=1)
+                target.apply_status_effect(stun)
+
+    class ApplyStun:
+        def __init__(self, chance=0.5, duration=1):
+            self.chance = chance
+            self.duration = duration
+
+        def activate(self, game_state, source, target):
+            if target and random.random() < self.chance:
+                stun = StunEffect(self.duration)
+                target.apply_status_effect(stun)
+                print(f"{target.name} is stunned!")
+            else:
+                print(f"{target.name} resisted the stun.")
+
+    class ApplyPoison:
+        def __init__(self, duration=3, damage_sequence=[5, 10, 15]):
+            self.duration = duration
+            self.damage_sequence = damage_sequence
+
+        def activate(self, game_state, source, target):
+            if target:
+                poison = PoisonEffect(self.duration, self.damage_sequence)
+                target.apply_status_effect(poison)
+
+    class ReduceOpponentDefense:
+        def __init__(self, duration=1, reduction_percentage=30):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, game_state, source, target):
+            if target:
+                defense_reduction = DefenseReductionEffect(self.duration, self.reduction_percentage)
+                target.apply_status_effect(defense_reduction)
+
+    class BlockFireAttack:
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} blocks fire attacks.")
+            source.fire_shield_active = True
+
+    class BlockIceAttackAndSlow:
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} blocks ice attacks and slows the opponent.")
+            source.ice_wall_active = True
+            if target:
+                slow = SlowEffect(duration=1)
+                target.apply_status_effect(slow)
+
+    class ReflectElectricDamage:
+        def __init__(self, reflect_percentage=0.5):
+            self.reflect_percentage = reflect_percentage
+
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} reflects {int(self.reflect_percentage * 100)}% of electric damage.")
+            source.lightning_reflect_active = self.reflect_percentage
+
+    class ClearPoisonAndHeal:
+        def __init__(self, heal_amount=5):
+            self.heal_amount = heal_amount
+
+        def activate(self, game_state, source, target=None):
+            if source.has_status_effect("Poison"):
+                source.remove_status_effect("Poison")
+                print(f"Poison cleared from {source.name}.")
+            source.heal(self.heal_amount)
+            print(f"{source.name} healed {self.heal_amount} HP.")
+
+    class ReduceIncomingDamage:
+        def __init__(self, duration=2, reduction_percentage=50):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} reduces incoming damage by {self.reduction_percentage}%.")
+            source.damage_reduction_active = (self.reduction_percentage / 100, self.duration)
+
+    class ReduceIncomingDamage:
+        def __init__(self, duration=2, reduction_percentage=50):
+            self.duration = duration
+            self.reduction_percentage = reduction_percentage
+
+        def activate(self, game_state, source, target=None):
+            print(f"{source.name} reduces incoming damage by {self.reduction_percentage}%.")
+            source.damage_reduction_active = (self.reduction_percentage / 100, self.duration)
+
+# Card Class (#5652765, Billy)
+class Card:
+    def __init__(self, name, card_type, cost=0, damage=0, block=0, description="", ability=None, tags=None):
+        self.name = name
+        self.card_type = card_type
+        self.cost = cost
+        self.damage = damage
+        self.block = block
+        self.description = description
+        self.ability = ability
+        self.tags = tags if tags is not None else []
+
+    def __str__(self):
+        info = f"{self.name} ({self.card_type}) - Cost: {self.cost}"
+        if self.damage > 0:
+            info += f", Damage: {self.damage}"
+        if self.block > 0:
+            info += f", Block: {self.block}"
+        info += f"\nDescription: {self.description}"
+        return info
+
+    def play(self, game_state, player, target=None):
+        print(f"{player.name} played {self.name} card.")
+        if self.ability:
+            self.ability.activate(game_state, player, target)
+        if self.damage > 0 and target:
+            total_damage = self.damage + (player.weapon.base_level_damage if player.skill_tree.unlocked and "Sword Mastery" in [node.name for node in player.skill_tree.children if node.unlocked] else 0)
+            print(f"{target.name} takes {total_damage} damage.")
+            target.take_damage(total_damage, self.tags[0] if self.tags else "Physical")
+        if self.block > 0:
+            block_amount = self.block + (player.shield.strength if player.skill_tree.unlocked and "Shield Defense" in [node.name for node in player.skill_tree.children if node.unlocked] else 0)
+            player.defense += block_amount
+            print(f"{player.name} gains {block_amount} defense.")
+
+# Card Definitions (#5652765, Billy)
+flame_sword_card = Card(
+    name="Flame Sword",
+    card_type="Attack",
+    cost=2,
+    damage=15,
+    description="Burns the opponent for 2 turns (+5 damage per turn)",
+    ability=SpecialAbilities.ApplyBurn(duration=2, damage_per_turn=5),
+    tags=["Fire"]
+)
+
+ice_spear_card = Card(
+    name="Ice Spear",
+    card_type="Attack",
+    cost=1,
+    damage=10,
+    description="Prevents opponent from attacking next turn",
+    ability=SpecialAbilities.PreventAttackNextTurn(),
+    tags=["Ice"]
+)
+
+lightning_strike_card = Card(
+    name="Lightning Strike",
+    card_type="Attack",
+    cost=2,
+    damage=20,
+    description="50% chance to stun the opponent for 1 turn",
+    ability=SpecialAbilities.ApplyStun(chance=0.5),
+    tags=["Electric"]
+)
+
+poison_arrow_card = Card(
+    name="Poison Arrow",
+    card_type="Attack",
+    cost=1,
+    damage=12,
+    description="Poisons the opponent for 3 turns (5 → 10 → 15 damage)",
+    ability=SpecialAbilities.ApplyPoison(duration=3, damage_sequence=[5, 10, 15]),
+    tags=["Poison"]
+)
+
+stone_storm_card = Card(
+    name="Stone Storm",
+    card_type="Attack",
+    cost=2,
+    damage=18,
+    description="Reduces opponent's defense by 30% for 1 turn",
+    ability=SpecialAbilities.ReduceOpponentDefense(duration=1, reduction_percentage=30),
+    tags=["Earth"]
+)
+
+fire_shield_card = Card(
+    name="Fire Shield",
+    card_type="Defense",
+    cost=2,
+    block=20,
+    description="Completely blocks fire attacks",
+    ability=SpecialAbilities.BlockFireAttack(),
+    tags=["Fire"]
+)
+
+ice_wall_card = Card(
+    name="Ice Wall",
+    card_type="Defense",
+    cost=1,
+    block=15,
+    description="Blocks ice attacks and slows the opponent",
+    ability=SpecialAbilities.BlockIceAttackAndSlow(),
+    tags=["Ice"]
+)
+
+lightning_reflect_card = Card(
+    name="Lightning Reflect",
+    card_type="Defense",
+    cost=1,
+    block=10,
+    description="Reflects 50% of electric damage",
+    ability=SpecialAbilities.ReflectElectricDamage(reflect_percentage=0.5),
+    tags=["Electric"]
+)
+
+poison_cleanse_card = Card(
+    name="Poison Cleanse",
+    card_type="Defense",
+    cost=1,
+    block=0,
+    description="Clears poison and heals 5 HP",
+    ability=SpecialAbilities.ClearPoisonAndHeal(heal_amount=5),
+    tags=["Poison"]
+)
+
+stone_armor_card = Card(
+    name="Stone Armor",
+    card_type="Defense",
+    cost=3,
+    block=25,
+    description="Reduces incoming damage by 50% for 2 turns",
+    ability=SpecialAbilities.ReduceIncomingDamage(duration=2, reduction_percentage=50),
+    tags=["Earth"]
+)
+
+# Card Pools
+all_cards = [
+    flame_sword_card, ice_spear_card, lightning_strike_card, poison_arrow_card, stone_storm_card,
+    fire_shield_card, ice_wall_card, lightning_reflect_card, poison_cleanse_card, stone_armor_card
+]
+attack_cards = [
+    flame_sword_card, ice_spear_card, lightning_strike_card, poison_arrow_card, stone_storm_card
+]
+
+# Weapon, Shield, Armour Classes (#5677995)
+class Weapon:
+    def __init__(self, name, base_level_damage):
+        self.name = name
+        self.base_level_damage = base_level_damage
+
+    def save_state(self):
+        return {
+            "name": self.name,
+            "base_level_damage": self.base_level_damage
+        }
+
+    def load_state(self, state):
+        self.name = state["name"]
+        self.base_level_damage = state["base_level_damage"]
+
+    def __str__(self):
+        return f"Weapon: {self.name} | Damage: {self.base_level_damage}"
+
+class Shield:
+    def __init__(self, strength):
+        self.strength = strength
+
+    def save_state(self):
+        return {
+            "strength": self.strength
+        }
+
+    def load_state(self, state):
+        self.strength = state["strength"]
+
+    def __str__(self):
+        return f"Shield | Strength: {self.strength}"
+
+class Armour:
+    def __init__(self, defense):
+        self.defense = defense
+
+    def save_state(self):
+        return {
+            "defense": self.defense
+        }
+
+    def load_state(self, state):
+        self.defense = state["defense"]
+
+    def __str__(self):
+        return f"Armour | Defense: {self.defense}"
+
+# Action History (#5652765, #tsola)
+class ActionHistory:
+    def __init__(self):
+        self.stack = []
+
+    def push(self, action):
+        self.stack.append(action)
+
+    def pop(self):
+        return self.stack.pop() if self.stack else None
+
+# Player Class (#5652765, #5677995, #tsola)
+class Player:
+    def __init__(self, name, max_health=100):
+        self.name = name
+        self.max_health = max_health
+        self.health = max_health
+        self.max_stamina = 10
+        self.stamina = 3
+        self.defense = 0
+        self.hand = []
+        self.status_effects = []
+        self.can_act = True
+        self.fire_shield_active = False
+        self.ice_wall_active = False
+        self.lightning_reflect_active = 0
+        self.damage_reduction_active = (0, 0)
+        self.history = ActionHistory()
+        self.weapon = Weapon("Crimson Double Edge Sword", base_level_damage=20)
+        self.shield = Shield(strength=20)
+        self.armour = Armour(defense=20)
+        self.skill_tree = SkillNode("Basic Combat")
+        self.skill_tree.unlocked = True
+        self.setup_skill_tree()
+
+    def setup_skill_tree(self):
+        sword_mastery = SkillNode("Sword Mastery")
+        shield_defense = SkillNode("Shield Defense")
+        tactical_strike = SkillNode("Tactical Strike")
+        fire_resistance = SkillNode("Fire Resistance")
+        poison_resistance = SkillNode("Poison Resistance")
+        self.skill_tree.add_child(sword_mastery)
+        self.skill_tree.add_child(shield_defense)
+        sword_mastery.add_child(tactical_strike)
+        shield_defense.add_child(fire_resistance)
+        shield_defense.add_child(poison_resistance)
+
+    def get_random_card(self):
+        return random.choice(all_cards)
+
+    def get_random_attack_card(self):
+        return random.choice(attack_cards)
+
+    def play_card(self, game_state, target=None, card_index=0):
+        if 0 <= card_index < len(self.hand):
+            card = self.hand[card_index]
+            if self.stamina < card.cost:
+                return False, "Not enough stamina!"
+            self.history.push({
+                'type': 'play_card',
+                'card': card,
+                'card_index': card_index,
+                'hand_before': self.hand[:],
+                'target': target,
+                'player_health': self.health,
+                'target_health': target.health if target else None,
+                'player_stamina': self.stamina,
+                'player_defense': self.defense,
+                'status_effects': [str(e) for e in self.status_effects],
+                'fire_shield': self.fire_shield_active,
+                'ice_wall': self.ice_wall_active,
+                'lightning_reflect': self.lightning_reflect_active,
+                'damage_reduction': self.damage_reduction_active
+            })
+            self.stamina -= card.cost
+            card.play(game_state, self, target)
+            self.hand.pop(card_index)
+            self.hand.append(self.get_random_attack_card())  # Replace with random attack card
+            if self.stamina <= 0:
+                self.take_damage(10, "Physical")  # Depletion damage
+                self.stamina = self.max_stamina
+                self.take_damage(10, "Physical")  # Reset damage
+                print("Exhausted! Took 20 damage total, stamina restored.")
+                return True, "Exhausted! Took 20 damage total, stamina restored."
+            return True, f"Played {card.name}!"
+        return False, "Invalid card index!"
+
+    def undo_last_action(self, game_state):
+        last_action = self.history.pop()
+        if not last_action:
+            return False, "No action to undo!"
+        if last_action['type'] == 'play_card':
+            print(f"UNDO: Reverting last card play ({last_action['card'].name})")
+            self.hand = last_action['hand_before'][:]  # Restore hand state
+            self.stamina = last_action['player_stamina']
+            self.health = last_action['player_health']
+            self.defense = last_action['player_defense']
+            self.fire_shield_active = last_action['fire_shield']
+            self.ice_wall_active = last_action['ice_wall']
+            self.lightning_reflect_active = last_action['lightning_reflect']
+            self.damage_reduction_active = last_action['damage_reduction']
+            self.status_effects = [
+                eff for eff in self.status_effects
+                if str(eff) in last_action['status_effects']
+            ]
+            if last_action['target']:
+                last_action['target'].health = last_action['target_health']
+            return True, f"Undid {last_action['card'].name}!"
+        return False, "No valid action to undo!"
+
+    def take_damage(self, amount, damage_type="Physical"):
+        if damage_type == "Fire" and self.fire_shield_active:
+            print("Fire attack blocked!")
+            return 0
+        if damage_type == "Ice" and self.ice_wall_active:
+            print("Ice attack blocked!")
+            return 0
+        final_damage = amount
+        if self.damage_reduction_active[0] > 0:
+            reduction = self.damage_reduction_active[0]
+            final_damage = int(final_damage * (1 - reduction))
+            print(f"Damage reduced by {reduction * 100}%.")
+        if damage_type == "Electric" and self.lightning_reflect_active > 0:
+            reflected = int(final_damage * self.lightning_reflect_active)
+            final_damage -= reflected
+            print(f"{self.lightning_reflect_active * 100}% damage reflected.")
+        damage_taken = max(0, final_damage - self.defense)
+        self.health -= damage_taken
+        print(f"{self.name} takes {damage_taken} damage. Remaining HP: {self.health}")
+        return damage_taken
+
+    def heal(self, amount):
+        self.health = min(self.health + amount, self.max_health)
+        print(f"{self.name} heals {amount} HP. New HP: {self.health}")
+
+    def apply_status_effect(self, effect):
+        self.status_effects.append(effect)
+        effect.apply(self)
+
+    def remove_status_effect(self, effect_name):
+        for effect in self.status_effects[:]:
+            if effect.name == effect_name:
+                if hasattr(effect, 'remove'):
+                    effect.remove(self)
+                self.status_effects.remove(effect)
+                print(f"{effect_name} effect removed from {self.name}.")
+
+    def has_status_effect(self, effect_name):
+        return any(effect.name == effect_name for effect in self.status_effects)
+
+    def begin_turn(self):
+        self.can_act = True
+        self.stamina = min(self.stamina + 3, self.max_stamina)
+        self.defense = 0
+        self.fire_shield_active = False
+        self.ice_wall_active = False
+
+    def end_turn(self):
+        for effect in self.status_effects[:]:
+            if effect.tick(self):
+                self.remove_status_effect(effect.name)
+        if self.damage_reduction_active[1] > 0:
+            duration_left = self.damage_reduction_active[1] - 1
+            self.damage_reduction_active = (self.damage_reduction_active[0], duration_left)
+            if duration_left <= 0:
+                print(f"Damage reduction effect ended for {self.name}.")
+                self.damage_reduction_active = (0, 0)
+
+    def unlock_skill(self, skill_name):
+        def find_and_unlock(node):
+            if node.name == skill_name:
+                return node.unlock()
+            for child in node.children:
+                if find_and_unlock(child):
+                    return True
+            return False
+        return find_and_unlock(self.skill_tree)
+
+    def save_state(self):
+        return {
+            "name": self.name,
+            "health": self.health,
+            "stamina": self.stamina,
+            "hand": [card.__dict__ for card in self.hand],
+            "skill_tree": self.skill_tree.save_state(),
+            "weapon": self.weapon.save_state(),
+            "shield": self.shield.save_state(),
+            "armour": self.armour.save_state()
+        }
+
+    def load_state(self, state):
+        self.name = state["name"]
+        self.health = state["health"]
+        self.stamina = state["stamina"]
+        self.hand = [Card(**card_data) for card_data in state["hand"]]
+        self.skill_tree.load_state(state["skill_tree"])
+        self.weapon.load_state(state["weapon"])
+        self.shield.load_state(state["shield"])
+        self.armour.load_state(state["armour"])
+
+    def __str__(self):
+        return f"{self.name} | HP: {self.health}/{self.max_health} | Stamina: {self.stamina}/{self.max_stamina}"
+
+
+class BossAttackSystem:
+    def __init__(self, boss_type, attack_power=10):
+        self.boss_type = boss_type
+        self.attack_power = attack_power
+        self.attack_configs = {
+            "medusa": {"bonus": 10, "chance": 0.4, "message": "attack intensifies"},
+            "swamp": {"bonus": 8, "chance": 0.3, "message": "attack surges"},
+            "dragon": {"bonus": 15, "chance": 0.25, "message": "attack roars"}
+        }
+
+    def attack(self, attacker, target):
+        if not attacker.can_act:
+            if attacker.has_status_effect("Stun") or attacker.has_status_effect("Slow"):
+                return False, f"{attacker.name} is stunned and unable to attack!"
+            return False, f"{attacker.name} is unable to act!"
+
+        damage = self.attack_power
+        config = self.attack_configs.get(self.boss_type, {})
+        bonus = config.get("bonus", 0)
+        chance = config.get("chance", 0)
+        message = config.get("message", "attacks")
+
+        if random.random() < chance:
+            damage += bonus
+            print(f"{attacker.name}'s {message}! Dealing {damage} damage.")
+        else:
+            print(f"{attacker.name} attacks for {damage} damage.")
+
+        target.take_damage(damage, "Physical")
+        return True, f"{attacker.name} attacked for {damage} damage!"
+# AI Player (#5652765)
+class AIPlayer:
+    def __init__(self, name="Computer", max_health=100, boss_type=""):
+        self.name = name
+        self.max_health = max_health
+        self.health = max_health
+        self.status_effects = []
+        self.can_act = True
+        self.boss_type = boss_type
+        self.attack_system = BossAttackSystem(boss_type, attack_power=10)
+
+    def take_damage(self, amount, damage_type="Physical"):
+        damage_taken = max(0, amount)
+        self.health -= damage_taken
+        print(f"{self.name} takes {damage_taken} damage. Remaining HP: {self.health}")
+        return damage_taken
+
+    def heal(self, amount):
+        self.health = min(self.health + amount, self.max_health)
+        print(f"{self.name} heals {amount} HP. New HP: {self.health}")
+
+    def apply_status_effect(self, effect):
+        self.status_effects.append(effect)
+        effect.apply(self)
+
+    def remove_status_effect(self, effect_name):
+        for effect in self.status_effects[:]:
+            if effect.name == effect_name:
+                if hasattr(effect, 'remove'):
+                    effect.remove(self)
+                self.status_effects.remove(effect)
+                print(f"{effect_name} effect removed from {self.name}.")
+
+    def has_status_effect(self, effect_name):
+        return any(effect.name == effect_name for effect in self.status_effects)
+
+    def begin_turn(self):
+        self.can_act = True
+
+    def end_turn(self):
+        for effect in self.status_effects[:]:
+            if effect.tick(self):
+                self.remove_status_effect(effect.name)
+
+    def attack(self, target):
+        return self.attack_system.attack(self, target)
+
+class CombatSystem:
+    def __init__(self, boss_type, player, game_state, scenes):
+        self.boss_type = boss_type
+        self.player = player
+        self.enemy = AIPlayer(f"{boss_type.capitalize()} Boss", max_health=150, boss_type=boss_type)
+        self.game_state = game_state
+        self.scenes = scenes
+        self.current_turn = "player"
+        self.message = ""
+        self.message_timer = 0
+        self.player.hand = [self.player.get_random_card() for _ in range(5)]  # Initialize 5 random cards
+        self.player.stamina = self.player.max_stamina
+        self.player.take_damage(10, "Physical")  # Initial stamina reset damage
+        self.message = "Combat begins! Took 10 damage for stamina reset."
+        self.message_timer = 60
+        self.begin_turn()
+
+    def begin_turn(self):
+        print(f"Beginning turn for {self.current_turn}")  # Debug print
+        if self.current_turn == "player":
+            self.player.begin_turn()
+        else:
+            self.enemy.begin_turn()
+
+    def player_attack(self, card_index):
+        if self.current_turn == "player" and self.player.can_act:
+            success, message = self.player.play_card(self, self.enemy, card_index)
+            self.message = message
+            self.message_timer = 60
+            if success:
+                self.player.end_turn()
+                if self.enemy.health > 0:
+                    print("Switching to enemy turn")  # Debug print
+                    self.current_turn = "enemy"
+                    success, enemy_message = self.enemy.attack(self.player)
+                    self.message = f"{message} | {enemy_message}"
+                    self.message_timer = 60
+                    self.enemy.end_turn()
+                    self.current_turn = "player"
+                    self.begin_turn()
+            return success
+        return False
+
+    def pass_turn(self):
+        if self.current_turn == "player":
+            self.player.end_turn()
+            if self.enemy.health > 0:
+                print("Switching to enemy turn for pass")  # Debug print
+                self.current_turn = "enemy"
+                success, enemy_message = self.enemy.attack(self.player)
+                self.message = f"Player passes, boss attacks! | {enemy_message}"
+                self.message_timer = 60
+                self.enemy.end_turn()
+                self.current_turn = "player"
+                self.begin_turn()
+
+    def update(self):
+        if self.message_timer > 0:
+            self.message_timer -= 1
+        if self.player.health <= 0:
+            print("Transitioning to defeat screen")  # Debug print
+            self.game_state.game_mode = "defeat"
+            self.game_state.show_skill_tree = False
+            self.game_state.combat_system = None
+        elif self.enemy.health <= 0:
+            print("Transitioning to victory screen")  # Debug print
+            self.game_state.game_mode = "victory"
+            self.game_state.current_scene = "victory"
+            self.game_state.initialize_card(self.scenes, disable_down_swipe=True)
+            self.game_state.show_skill_tree = False
+            self.game_state.combat_system = None
+            self.game_state.player.unlock_skill("Fire Resistance")
+
+# Button Class (Original, adapted from #5665548)
+class Button:
+    def __init__(self, x, y, width, height, text, idle_color, hover_color):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.text = text
+        self.idle_color = idle_color
+        self.hover_color = hover_color
+        self.current_color = idle_color
+
+    def update(self, mouse_pos):
+        self.current_color = self.hover_color if self.rect.collidepoint(mouse_pos) else self.idle_color
+
+    def draw(self, surface):
+        pygame.draw.rect(surface, self.current_color, self.rect, border_radius=10)
+        text = font_body.render(self.text, True, WHITE)
+        text_rect = text.get_rect(center=self.rect.center)
+        surface.blit(text, text_rect)
+
+    def is_clicked(self, mouse_pos, event):
+        return event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.rect.collidepoint(mouse_pos)
+
+# SwipeCard Class (Original, adapted from #5665548)
+class SwipeCard:
+    def __init__(self, width, height, content, disable_down_swipe=False):
+        self.width = width
+        self.height = height
+        self.content = content
+        self.disable_down_swipe = disable_down_swipe
+        self.x = (WIDTH - width) // 2
+        self.y = (HEIGHT - height) // 2
+        self.target_x = self.x
+        self.target_y = self.y
+        self.grabbed = False
+        self.grab_offset_x = 0
+        self.grab_offset_y = 0
+        self.rotation = 0
+        self.decision_made = False
+        self.decision = None
+        self.surface = self.create_surface()
+        self.swipe_threshold_x = width * 0.3
+        self.swipe_threshold_y = height * 0.3
+
+    def create_surface(self):
+        card = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        card.fill(CARD_BEIGE)
+        pygame.draw.rect(card, CARD_BROWN, (0, 0, self.width, self.height), 10, border_radius=20)
+
+        title = font_title.render(self.content["title"], True, BLACK)
+        title_rect = title.get_rect(center=(self.width // 2, 60))
+        card.blit(title, title_rect)
+
+        wrapped_text = textwrap.wrap(self.content["description"], width=45)
+        for i, line in enumerate(wrapped_text[:5]):
+            text = font_body.render(line, True, BLACK)
+            text_rect = text.get_rect(center=(self.width // 2, 140 + i * 40))
+            card.blit(text, text_rect)
+
+        if "options" in self.content and len(self.content["options"]) >= 2:
+            left_option = font_body.render(f"← {self.content['options'][0]['text']}", True, RED)
+            right_option = font_body.render(f"{self.content['options'][1]['text']} →", True, GREEN)
+            card.blit(left_option, (30, self.height - 60))
+            card.blit(right_option, (self.width - right_option.get_width() - 30, self.height - 60))
+            if not self.disable_down_swipe and len(self.content["options"]) >= 3:
+                down_option = font_body.render(f"↓ {self.content['options'][2]['text']}", True, BLUE)
+                card.blit(down_option, (self.width // 2 - down_option.get_width() // 2, self.height - 30))
+
+        return card
+
+    def handle_event(self, event, mouse_pos):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            card_rect = pygame.Rect(self.x, self.y, self.width, self.height)
+            if card_rect.collidepoint(mouse_pos):
+                self.grabbed = True
+                self.grab_offset_x = mouse_pos[0] - self.x
+                self.grab_offset_y = mouse_pos[1] - self.y
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            if self.grabbed:
+                self.grabbed = False
+                x_offset = self.x - ((WIDTH - self.width) // 2)
+                y_offset = self.y - ((HEIGHT - self.height) // 2)
+                if x_offset < -self.swipe_threshold_x:
+                    self.decision = "left"
+                    self.decision_made = True
+                    self.target_x = -self.width
+                elif x_offset > self.swipe_threshold_x:
+                    self.decision = "right"
+                    self.decision_made = True
+                    self.target_x = WIDTH
+                elif not self.disable_down_swipe and y_offset > self.swipe_threshold_y:
+                    self.decision = "down"
+                    self.decision_made = True
+                    self.target_y = HEIGHT
+                else:
+                    self.target_x = (WIDTH - self.width) // 2
+                    self.target_y = (HEIGHT - self.height) // 2
+
+    def update(self, mouse_pos):
+        if self.grabbed:
+            self.x = mouse_pos[0] - self.grab_offset_x
+            self.y = mouse_pos[1] - self.grab_offset_y
+            center_offset = self.x - ((WIDTH - self.width) // 2)
+            self.rotation = center_offset * 0.05
+        else:
+            diff_x = self.target_x - self.x
+            diff_y = self.target_y - self.y
+            self.x += diff_x * 0.2
+            self.y += diff_y * 0.2
+            center_offset = self.x - ((WIDTH - self.width) // 2)
+            self.rotation = center_offset * 0.05
+
+    def draw(self, surface):
+        rotated_card = pygame.transform.rotate(self.surface, self.rotation)
+        rotated_rect = rotated_card.get_rect(center=(self.x + self.width // 2, self.y + self.height // 2))
+        surface.blit(rotated_card, rotated_rect.topleft)
+        x_offset = self.x - ((WIDTH - self.width) // 2)
+        y_offset = self.y - ((HEIGHT - self.height) // 2)
+        if x_offset < -10:
+            pygame.draw.rect(surface, (255, 0, 0, min(abs(x_offset) / 2, 100)),
+                             (50, 50, 100, HEIGHT - 100), border_radius=10)
+        elif x_offset > 10:
+            pygame.draw.rect(surface, (0, 255, 0, min(abs(x_offset) / 2, 100)),
+                             (WIDTH - 150, 50, 100, HEIGHT - 100), border_radius=10)
+        elif not self.disable_down_swipe and y_offset > 10:
+            pygame.draw.rect(surface, (0, 0, 255, min(abs(y_offset) / 2, 100)),
+                             (WIDTH // 2 - 50, HEIGHT - 150, 100, 100), border_radius=10)
+
+# Game State (Original, #5652765, #5677995)
+class GameState:
+    def __init__(self):
+        self.current_scene = "start"
+        self.choices = []
+        self.boss_path = None
+        self.boss_defeated = False
+        self.decision_count = 0
+        self.card = None
+        self.next_scene = None
+        self.transition_timer = 0
+        self.game_mode = "menu"
+        self.player = Player("Hero")
+        self.first_decision_made = False
+        self.show_skill_tree = False
+
+    def initialize_card(self, scenes, disable_down_swipe=False):
+        if self.current_scene in scenes:
+            self.card = SwipeCard(800, 500, scenes[self.current_scene], disable_down_swipe=disable_down_swipe)
+        else:
+            print(f"Error: Scene '{self.current_scene}' not found. Falling back to start scene.")
+            self.current_scene = "start"
+            self.card = SwipeCard(800, 500, scenes[self.current_scene], disable_down_swipe=disable_down_swipe)
+
+    def add_choice(self, choice, scenes):
+        # Contributors: Original, #5677995 (skill integration)
+        self.choices.append(choice)
+        self.decision_count += 1
+        if self.decision_count == 1:
+            self.first_decision_made = True
+            if choice == "A":
+                self.boss_path = "medusa"
+                self.player.unlock_skill("Sword Mastery")
+            elif choice == "B":
+                self.boss_path = "Swamp Monster"
+                self.player.unlock_skill("Shield Defense")
+            elif choice == "C":
+                self.boss_path = "dragon"
+                self.player.unlock_skill("Tactical Strike")
+        if self.decision_count >= 5 and not self.current_scene.startswith("boss_"):
+            self.next_scene = f"boss_{self.boss_path}"
+        self.save_progress()
+
+    def update(self):
+        if self.next_scene:
+            self.transition_timer += 1
+            if self.transition_timer > 30:
+                self.current_scene = self.next_scene
+                self.next_scene = None
+                self.transition_timer = 0
+                return True
+        return False
+
+    def save_progress(self):
+        progress = {
+            "current_scene": self.current_scene,
+            "choices": self.choices,
+            "boss_path": self.boss_path,
+            "decision_count": self.decision_count,
+            "player": self.player.save_state()
+        }
+        try:
+            with open('progress.json', 'w') as f:
+                json.dump(progress, f, indent=4)
+        except Exception as e:
+            print(f"Error: Failed to save progress: {e}")
+
+    def load_progress(self, scenes):
+        try:
+            with open('progress.json', 'r') as f:
+                progress = json.load(f)
+                self.current_scene = progress.get("current_scene", "start")
+                self.choices = progress.get("choices", [])
+                self.boss_path = progress.get("boss_path")
+                self.decision_count = progress.get("decision_count", 0)
+                self.player.load_state(progress["player"])
+                self.first_decision_made = self.decision_count > 0
+                self.initialize_card(scenes, disable_down_swipe=self.first_decision_made)
+                return True
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            self.current_scene = "start"
+            self.choices = []
+            self.boss_path = None
+            self.decision_count = 0
+            self.first_decision_made = False
+            self.player = Player("Hero")
+            self.initialize_card(scenes, disable_down_swipe=False)
+            return False
+
+# Draw Functions (Original, #5665548)
+def draw_boss(screen, boss_type):
+    boss_text = font_title.render(boss_type.capitalize(), True, WHITE)
+    boss_rect = boss_text.get_rect(center=(WIDTH // 2, 100))
+    screen.blit(boss_text, boss_rect)
+
+def draw_health_bars(screen, player_health, enemy_health, enemy_max_health, combat_system):
+    player_bar_width = 300
+    player_bar_height = 20
+    player_fill_width = (player_health / 100) * player_bar_width
+    pygame.draw.rect(screen, RED, (50, 50, player_bar_width, player_bar_height))
+    pygame.draw.rect(screen, GREEN, (50, 50, player_fill_width, player_bar_height))
+    player_text = font_body.render(f"Player: {player_health}/100", True, WHITE)
+    screen.blit(player_text, (50, 30))
+
+    enemy_bar_width = 300
+    enemy_bar_height = 20
+    enemy_fill_width = (enemy_health / enemy_max_health) * enemy_bar_width
+    pygame.draw.rect(screen, RED, (WIDTH - 350, 50, enemy_bar_width, enemy_bar_height))
+    pygame.draw.rect(screen, GREEN, (WIDTH - 350, 50, enemy_fill_width, enemy_bar_height))
+    enemy_text = font_body.render(f"{combat_system.boss_type.capitalize()}: {enemy_health}/{enemy_max_health}", True, WHITE)
+    screen.blit(enemy_text, (WIDTH - 350, 30))
+
+def draw_combat_cards(screen, hand, combat_system):
+    card_width, card_height = 150, 200
+    cards_start_x = (WIDTH - (len(hand) * (card_width + 20) - 20)) // 2
+    for i, card in enumerate(hand):
+        card_x = cards_start_x + i * (card_width + 20)
+        card_y = HEIGHT - card_height - 50
+        pygame.draw.rect(screen, CARD_BEIGE, (card_x, card_y, card_width, card_height), border_radius=10)
+        pygame.draw.rect(screen, CARD_BROWN, (card_x, card_y, card_width, card_height), 5, border_radius=10)
+        name_text = font_body.render(card.name, True, BLACK)
+        screen.blit(name_text, (card_x + 10, card_y + 10))
+        damage_text = font_body.render(f"DMG: {card.damage}", True, BLACK)
+        screen.blit(damage_text, (card_x + 10, card_y + 50))
+        cost_text = font_body.render(f"Cost: {card.cost}", True, BLACK)
+        screen.blit(cost_text, (card_x + 10, card_y + 90))
+        if card.block > 0:
+            block_text = font_body.render(f"Block: {card.block}", True, BLACK)
+            screen.blit(block_text, (card_x + 10, card_y + 130))
+
+def create_scenes_file():
+    # Contributors: Original
+    if os.path.exists('scenes.json'):
+        try:
+            with open('scenes.json', 'r') as f:
+                return json.load(f)
+        except Exception:
+            pass
+
+    scenes = {
+        "start": {
+            "title": "Trapped in the Cursed Mine",
+            "description": "You awake in a dark mine, head throbbing from a blow you don’t recall. Your sword lies nearby, and strange whispers echo through the tunnels. The mine feels alive, cursed. You must escape, but three paths lie ahead, each hinting at a different guardian.",
+            "options": [
+                {"text": "Snake-carved tunnel", "next": "decision1_A"},
+                {"text": "Mushroom-lit tunnel", "next": "decision1_B"},
+                {"text": "Scorched tunnel", "next": "decision1_C"}
+            ],
+            "image": None
+        },
+        "decision1_A": {
+            "title": "The Serpent’s Call",
+            "description": "The tunnel is damp, etched with snake carvings that seem to writhe in your torchlight. A sibilant whisper promises secrets but warns of a serpent queen. You find an old miner’s journal mentioning a ‘Medusa’ guarding the exit.",
+            "options": [
+                {"text": "Read the journal", "next": "decision2_AA"},
+                {"text": "Ignore it, proceed", "next": "decision2_AB"}
+            ],
+            "image": None
+        },
+        "decision1_B": {
+            "title": "The Glowing Mire",
+            "description": "The tunnel glows with bioluminescent mushrooms, their spores thick in the humid air. A foul stench suggests a swamp ahead, home to a monstrous creature. You find a vial of glowing spores.",
+            "options": [
+                {"text": "Use spores for light", "next": "decision2_BA"},
+                {"text": "Avoid spores", "next": "decision2_BB"}
+            ],
+            "image": None
+        },
+        "decision1_C": {
+            "title": "The Fiery Depths",
+            "description": "The tunnel reeks of sulfur, its walls scorched black. A distant roar shakes the mine, hinting at a dragon guardian. You find a charred shield.",
+            "options": [
+                {"text": "Take the shield", "next": "decision2_CA"},
+                {"text": "Leave it", "next": "decision2_CB"}
+            ],
+            "image": None
+        },
+        "boss_medusa": {
+            "title": "The Serpent Queen",
+            "description": "Medusa stands before you, snakes writhing in her hair. Her gaze could turn you to stone, but your choices have led you here. Defeat her to break the mine’s curse.",
+            "options": [
+                {"text": "Begin battle", "next": "combat_medusa"},
+                {"text": "Prepare for battle", "next": "combat_medusa"}
+            ],
+            "image": None
+        },
+        "boss_swamp": {
+            "title": "The Swamp Monster Horror",
+            "description": "The Swamp Monster Horror rises from its toxic pool, tentacles lashing. The spores choke the air, but your journey has prepared you. Defeat it to escape the mine.",
+            "options": [
+                {"text": "Begin battle", "next": "combat_swamp"},
+                {"text": "Ready your weapon", "next": "combat_swamp"}
+            ],
+            "image": None
+        },
+        "boss_dragon": {
+            "title": "The Mine Dragon",
+            "description": "The dragon towers over you, flames curling from its jaws. The mine shakes with its power, but your path has led to this. Defeat it to win your freedom.",
+            "options": [
+                {"text": "Begin battle", "next": "combat_dragon"},
+                {"text": "Steel yourself", "next": "combat_dragon"}
+            ],
+            "image": None
+        },
+        "victory": {
+            "title": "Freedom Earned",
+            "description": "The guardian falls, and the mine’s curse lifts. You stumble into sunlight, scarred but alive. Your choices shaped your escape, a tale for the ages.",
+            "options": [
+                {"text": "Play again", "next": "start"},
+                {"text": "Return to menu", "next": "start"}
+            ],
+            "image": None
+        }
+    }
+    try:
+        with open('scenes.json', 'w') as f:
+            json.dump(scenes, f, indent=4)
+    except Exception as e:
+        print(f"Error: Failed to create scenes.json: {e}")
+    return scenes
+
+
+def main():
+    # Contributors: Original, #5652765, #5665548
+    clock = pygame.time.Clock()
+    try:
+        scenes = create_scenes_file()
+    except Exception as e:
+        print(f"Error: Failed to create scenes file: {e}")
+        pygame.quit()
+        sys.exit(1)
+
+    # Load background image for before/after fights
+    try:
+        image_path = "before_fight_background.png"
+        before_fight_background = pygame.image.load('C:\\Users\\Admin\\Desktop\\knight.png')
+        before_fight_background = pygame.transform.scale(before_fight_background, (WIDTH, HEIGHT))
+    except pygame.error as e:
+        print(f"Error: Failed to load background image '{image_path}': {e}")
+        print(f"Expected file location: 'C:\\Users\\Admin\\Desktop\\CS - seminarsheets\\.venv\\{image_path}'")
+        print("Falling back to black background")
+        print("To fix this, ensure the image file exists in the working directory or update the file path in the code.")
+        before_fight_background = None
+
+    game_state = GameState()
+    combat_system = None
+    buttons = [
+        Button(WIDTH // 2 - 100, HEIGHT // 2 - 50, 200, 60, "Play", BLUE, GREEN),
+        Button(WIDTH // 2 - 100, HEIGHT // 2 + 20, 200, 60, "Continue", BLUE, GREEN),
+        Button(WIDTH // 2 - 100, HEIGHT // 2 + 90, 200, 60, "Quit", BLUE, RED)
+    ]
+    outcome_buttons = [
+        Button(WIDTH // 2 - 100, HEIGHT // 2 - 50, 200, 60, "Skills", BLUE, GREEN),
+        Button(WIDTH // 2 - 100, HEIGHT // 2 + 20, 200, 60, "Menu", BLUE, GREEN),
+        Button(WIDTH // 2 - 100, HEIGHT // 2 + 90, 200, 60, "Quit", BLUE, RED)
+    ]
+    for button in outcome_buttons:
+        print(f"Button {button.text} rect: {button.rect}")
+    combat_buttons = [
+        Button(WIDTH - 150, HEIGHT - 50, 100, 40, "Pass", BLUE, GREEN),
+        Button(WIDTH - 300, HEIGHT - 50, 100, 40, "Undo", BLUE, GREEN)
+    ]
+    message = ""
+    message_timer = 0
+
+    while True:
+        mouse_pos = pygame.mouse.get_pos()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            print(f"Event: {event.type}, Game mode: {game_state.game_mode}, Mouse pos: {mouse_pos}")
+            if game_state.game_mode in ["victory", "defeat"]:
+                for button in outcome_buttons:
+                    if button.is_clicked(mouse_pos, event):
+                        print(f"Button clicked: {button.text} at {mouse_pos}, rect: {button.rect}")
+                        if button.text == "Menu":
+                            game_state = GameState()
+                            game_state.game_mode = "menu"
+                            combat_system = None
+                            game_state.show_skill_tree = False
+                            print("Returning to menu")
+                        elif button.text == "Quit":
+                            print("Quitting game")
+                            pygame.quit()
+                            sys.exit()
+                        elif button.text == "Skills":
+                            game_state.show_skill_tree = not game_state.show_skill_tree
+                            print(f"Skill tree toggled: {game_state.show_skill_tree}")
+
+            elif game_state.game_mode == "menu":
+                for button in buttons:
+                    if button.is_clicked(mouse_pos, event):
+                        if button.text == "Play":
+                            game_state = GameState()
+                            game_state.initialize_card(scenes, disable_down_swipe=False)
+                            game_state.game_mode = "story"
+                        elif button.text == "Continue":
+                            game_state = GameState()
+                            if game_state.load_progress(scenes):
+                                game_state.game_mode = "story"
+                                if game_state.current_scene.startswith("boss_"):
+                                    combat_system = CombatSystem(game_state.boss_path, game_state.player, game_state,
+                                                                 scenes)
+                                    game_state.game_mode = "combat"
+                        elif button.text == "Quit":
+                            pygame.quit()
+                            sys.exit()
+
+            elif game_state.game_mode == "story":
+                if game_state.card:
+                    game_state.card.handle_event(event, mouse_pos)
+                    if game_state.card.decision_made:
+                        choice = "A" if game_state.card.decision == "left" else "B" if game_state.card.decision == "right" else "C"
+                        options = scenes[game_state.current_scene]["options"]
+                        next_scene = options[0]["next"] if choice == "A" else options[1]["next"] if choice == "B" else \
+                        options[2]["next"] if choice == "C" and not game_state.first_decision_made else options[0][
+                            "next"]
+                        game_state.add_choice(choice, scenes)
+                        game_state.next_scene = next_scene
+                        game_state.card = None
+
+            elif game_state.game_mode == "combat" and combat_system:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if combat_system.current_turn == "player" and combat_system.player.can_act:
+                        card_width, card_height = 150, 200
+                        cards_start_x = (WIDTH - (len(combat_system.player.hand) * (card_width + 20) - 20)) // 2
+                        for i in range(len(combat_system.player.hand)):
+                            card_x = cards_start_x + i * (card_width + 20)
+                            card_y = HEIGHT - card_height - 50
+                            card_rect = pygame.Rect(card_x, card_y, card_width, card_height)
+                            if card_rect.collidepoint(mouse_pos):
+                                combat_system.player_attack(i)
+                                break
+                    for button in combat_buttons:
+                        if button.is_clicked(mouse_pos, event):
+                            if button.text == "Pass" and combat_system.current_turn == "player":
+                                combat_system.pass_turn()
+                            elif button.text == "Undo":
+                                success, msg = game_state.player.undo_last_action(combat_system)
+                                message = msg
+                                message_timer = 60
+
+        # Update
+        if message_timer > 0:
+            message_timer -= 1
+
+        for button in buttons + combat_buttons:
+            button.update(mouse_pos)
+
+        if game_state.game_mode == "story":
+            if game_state.update():
+                if game_state.current_scene.startswith("boss_"):
+                    combat_system = CombatSystem(game_state.boss_path, game_state.player, game_state, scenes)
+                    game_state.game_mode = "combat"
+                else:
+                    game_state.initialize_card(scenes, disable_down_swipe=game_state.first_decision_made)
+        elif game_state.game_mode == "combat" and combat_system:
+            combat_system.update()
+
+        # Draw
+        if game_state.game_mode in ["menu", "story", "victory", "defeat"]:
+            if before_fight_background:
+                screen.blit(before_fight_background, (0, 0))
+            else:
+                screen.fill(BLACK)
+        else:
+            screen.fill(BLACK)
+
+        if game_state.game_mode == "menu":
+            title_text = font_title.render("Redemption: Card Adventure", True, GOLD)
+            title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 4))
+            screen.blit(title_text, title_rect)
+            for button in buttons:
+                button.draw(screen)
+
+        elif game_state.game_mode == "story":
+            if game_state.card:
+                game_state.card.update(mouse_pos)
+                game_state.card.draw(screen)
+
+        elif game_state.game_mode == "combat" and combat_system:
+            draw_boss(screen, combat_system.boss_type)
+            draw_health_bars(screen, combat_system.player.health, combat_system.enemy.health,
+                             combat_system.enemy.max_health, combat_system)
+            draw_combat_cards(screen, combat_system.player.hand, combat_system)
+            stamina_text = font_body.render(
+                f"Stamina: {combat_system.player.stamina}/{combat_system.player.max_stamina}", True, WHITE)
+            stamina_rect = stamina_text.get_rect(topleft=(50, HEIGHT - 50))
+            screen.blit(stamina_text, stamina_rect)
+            block_text = font_body.render(f"Block: {combat_system.player.defense}", True, WHITE)
+            block_rect = block_text.get_rect(topleft=(50, HEIGHT - 80))
+            screen.blit(block_text, block_rect)
+            for button in combat_buttons:
+                button.draw(screen)
+            if combat_system.message_timer > 0:
+                message_text = font_body.render(combat_system.message, True, WHITE)
+                message_rect = message_text.get_rect(center=(WIDTH // 2, HEIGHT - 300))
+                screen.blit(message_text, message_rect)
+            if message_timer > 0:
+                message_text = font_body.render(message, True, WHITE)
+                message_rect = message_text.get_rect(center=(WIDTH // 2, HEIGHT - 350))
+                screen.blit(message_text, message_rect)
+
+        elif game_state.game_mode in ["victory", "defeat"]:
+            status_text = "You Have Won!" if game_state.game_mode == "victory" else "You Have Lost!"
+            color = GOLD if game_state.game_mode == "victory" else RED
+            title_text = font_title.render(status_text, True, color)
+            title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 4))
+            screen.blit(title_text, title_rect)
+
+            boss_message = (
+                f"{game_state.boss_path.capitalize()} lies defeated!"
+                if game_state.game_mode == "victory"
+                else f"The {game_state.boss_path.capitalize()} has triumphed!"
+            )
+            message_text = font_body.render(boss_message, True, WHITE)
+            message_rect = message_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
+            screen.blit(message_text, message_rect)
+
+            health_message = (
+                f"Your remaining health: {game_state.player.health}/{game_state.player.max_health}"
+                if game_state.game_mode == "victory"
+                else f"Boss remaining health: {combat_system.enemy.health}/{combat_system.enemy.max_health}"
+            ) if combat_system else "Combat ended."
+            health_text = font_body.render(health_message, True, WHITE)
+            health_rect = health_text.get_rect(center=(WIDTH // 2, HEIGHT // 3 + 50))
+            screen.blit(health_text, health_rect)
+
+            if game_state.show_skill_tree:
+                game_state.player.skill_tree.display_tree(screen, 50, 50)
+            else:
+                for button in outcome_buttons:
+                    button.update(mouse_pos)
+                    button.draw(screen)
+            if message_timer > 0:
+                message_text = font_body.render(message, True, WHITE)
+                message_rect = message_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 200))
+                screen.blit(message_text, message_rect)
+
+        try:
+            pygame.display.flip()
+        except Exception as e:
+            print(f"Error: Failed to update display: {e}")
+            pygame.quit()
+            sys.exit(1)
+
+        clock.tick(60)
+
+if __name__ == "__main__":
+    main()
