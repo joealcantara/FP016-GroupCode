@@ -1,0 +1,158 @@
+USER GUIDE: The King - Card Adventure
+Software Requirements
+To run The King: Card Adventure, ensure you have the following:
+
+1. Python Installation
+Python 3.7 or later (Recommended: 3.12.2)
+
+Download from the official Python website
+
+2. Required Python Packages
+Install the following packages using pip (Python’s package manager):
+
+bash
+pip install pygame
+Pygame: Used for game rendering, sound, and input handling.
+
+3. Code Editor (Optional but Recommended)
+Visual Studio Code (VSCode) (with Python extension)
+
+PyCharm (for better Python debugging)
+
+JupyterLab (if you prefer notebook-style execution)
+
+4. Permissions
+Ensure you have read/write permissions for the game directory (needed for saving progress).
+
+Hardware Requirements
+Minimum RAM: 500MB (for smooth gameplay)
+
+Graphics: Any modern GPU (integrated or dedicated)
+
+Storage: ~10MB (for game files and saves)
+
+Instructions to Run the Game
+1. Download the Game Files
+Ensure you have the following files in your game directory:
+
+main.py (the main game script)
+
+scenes.json (contains all story scenes)
+
+2. Running the Game
+Option 1: Using Terminal/Command Prompt
+Open Terminal (Linux/macOS) or Command Prompt (Windows).
+
+Navigate to the game directory:
+
+bash
+cd path/to/game_folder
+Run the game:
+
+bash
+python main.py
+(If multiple Python versions are installed, use python3 main.py.)
+
+Option 2: Using an IDE (VSCode, PyCharm, etc.)
+Open the game folder in your IDE.
+
+Run main.py by clicking the Run button (▶️) or pressing F5.
+
+Option 3: Executable (If Available)
+If the game is packaged as an .exe (Windows) or .app (macOS), simply double-click it.
+
+How to Play
+1. Main Menu
+When you launch the game, you’ll see:
+
+Play: Start a new game.
+
+Continue: Load a previous save (if available).
+
+Quit: Exit the game.
+
+2. Game Mechanics
+A. Story Mode (Card Swiping Decisions)
+You are presented with interactive story cards.
+
+Swipe Left (←): Choose Option A (Red).
+
+Swipe Right (→): Choose Option B (Green).
+
+Swipe Down (↓): Choose Option C (Blue, if available).
+
+Your choices affect:
+
+Equipment (weapons, shields, armor).
+
+Boss difficulty.
+
+Story path.
+
+B. Combat Mode (Turn-Based Card Battle)
+Objective: Defeat the boss using attack cards.
+
+Player Turn:
+
+Click on a combat card to attack (costs stamina).
+
+Stamina regenerates each turn (max: 5).
+
+Enemy Turn:
+
+The boss attacks automatically.
+
+Some bosses have special abilities (e.g., Medusa’s petrifying gaze).
+
+3. Combat Controls
+Click on a card to use it.
+
+Stamina Management:
+
+Each card has a cost (1-2 stamina).
+
+If you run out of stamina, you skip your turn.
+
+4. Inventory & Equipment
+Weapons: Increase attack damage.
+
+Armor: Reduces incoming damage.
+
+Shields: Blocks extra damage.
+
+5. Boss Battles
+Three Unique Bosses:
+
+Medusa (High damage, petrifying gaze).
+
+Swamp Horror (Toxic attacks, tentacle strikes).
+
+Dragon (Fire breath, high HP).
+
+Defeating a Boss leads to the victory ending.
+
+Losing sends you back to the main menu.
+
+Game Progress & Saving
+Auto-Save: The game saves after every decision.
+
+Manual Save: Not needed (progress is stored in progress.json).
+
+To Reset: Delete progress.json from the game folder.
+
+Troubleshooting
+Common Issues & Fixes
+Issue	Solution
+Game crashes on startup	Ensure scenes.json is in the same folder.
+No sound effects	Check if Pygame audio drivers are installed.
+Save file not loading	Delete progress.json and restart.
+Black screen	Update Pygame (pip install --upgrade pygame).
+Enjoy the Game!
+Experiment with different choices to unlock new story paths.
+
+Strategize in combat by balancing stamina and attacks.
+
+Try all three boss routes for unique endings!
+
+Happy adventuring! 🎮⚔️
+
