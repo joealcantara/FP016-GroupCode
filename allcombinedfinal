@@ -88,7 +88,6 @@ class SkillNode:
             child.display_tree(surface, x, y + 40 * (i + 1), level + 1)
 
 # Status Effects (#5652765)
-# Status Effects (#5652765)
 class StatusEffect:
     def __init__(self, name, duration):
         self.name = name
@@ -184,7 +183,7 @@ class SlowEffect(StatusEffect):
             target.can_act = True
             print(f"{target.name} is no longer slowed.")
         return self.duration <= 0
-# Special Abilities (#5652765)
+
 # Special Abilities (#5652765)
 class SpecialAbilities:
     class ApplyBurn:
@@ -277,21 +276,11 @@ class SpecialAbilities:
             print(f"{source.name} reduces incoming damage by {self.reduction_percentage}%.")
             source.damage_reduction_active = (self.reduction_percentage / 100, self.duration)
 
-    class ReduceIncomingDamage:
-        def __init__(self, duration=2, reduction_percentage=50):
-            self.duration = duration
-            self.reduction_percentage = reduction_percentage
-
-        def activate(self, game_state, source, target=None):
-            print(f"{source.name} reduces incoming damage by {self.reduction_percentage}%.")
-            source.damage_reduction_active = (self.reduction_percentage / 100, self.duration)
-
 # Card Class (#5652765, Billy)
 class Card:
-    def __init__(self, name, card_type, cost=0, damage=0, block=0, description="", ability=None, tags=None):
+    def __init__(self, name, card_type, damage=0, block=0, description="", ability=None, tags=None):
         self.name = name
         self.card_type = card_type
-        self.cost = cost
         self.damage = damage
         self.block = block
         self.description = description
@@ -299,7 +288,7 @@ class Card:
         self.tags = tags if tags is not None else []
 
     def __str__(self):
-        info = f"{self.name} ({self.card_type}) - Cost: {self.cost}"
+        info = f"{self.name} ({self.card_type})"
         if self.damage > 0:
             info += f", Damage: {self.damage}"
         if self.block > 0:
@@ -324,7 +313,6 @@ class Card:
 flame_sword_card = Card(
     name="Flame Sword",
     card_type="Attack",
-    cost=2,
     damage=15,
     description="Burns the opponent for 2 turns (+5 damage per turn)",
     ability=SpecialAbilities.ApplyBurn(duration=2, damage_per_turn=5),
@@ -334,7 +322,6 @@ flame_sword_card = Card(
 ice_spear_card = Card(
     name="Ice Spear",
     card_type="Attack",
-    cost=1,
     damage=10,
     description="Prevents opponent from attacking next turn",
     ability=SpecialAbilities.PreventAttackNextTurn(),
@@ -344,7 +331,6 @@ ice_spear_card = Card(
 lightning_strike_card = Card(
     name="Lightning Strike",
     card_type="Attack",
-    cost=2,
     damage=20,
     description="50% chance to stun the opponent for 1 turn",
     ability=SpecialAbilities.ApplyStun(chance=0.5),
@@ -354,7 +340,6 @@ lightning_strike_card = Card(
 poison_arrow_card = Card(
     name="Poison Arrow",
     card_type="Attack",
-    cost=1,
     damage=12,
     description="Poisons the opponent for 3 turns (5 → 10 → 15 damage)",
     ability=SpecialAbilities.ApplyPoison(duration=3, damage_sequence=[5, 10, 15]),
@@ -364,7 +349,6 @@ poison_arrow_card = Card(
 stone_storm_card = Card(
     name="Stone Storm",
     card_type="Attack",
-    cost=2,
     damage=18,
     description="Reduces opponent's defense by 30% for 1 turn",
     ability=SpecialAbilities.ReduceOpponentDefense(duration=1, reduction_percentage=30),
@@ -374,7 +358,6 @@ stone_storm_card = Card(
 fire_shield_card = Card(
     name="Fire Shield",
     card_type="Defense",
-    cost=2,
     block=20,
     description="Completely blocks fire attacks",
     ability=SpecialAbilities.BlockFireAttack(),
@@ -384,7 +367,6 @@ fire_shield_card = Card(
 ice_wall_card = Card(
     name="Ice Wall",
     card_type="Defense",
-    cost=1,
     block=15,
     description="Blocks ice attacks and slows the opponent",
     ability=SpecialAbilities.BlockIceAttackAndSlow(),
@@ -394,7 +376,6 @@ ice_wall_card = Card(
 lightning_reflect_card = Card(
     name="Lightning Reflect",
     card_type="Defense",
-    cost=1,
     block=10,
     description="Reflects 50% of electric damage",
     ability=SpecialAbilities.ReflectElectricDamage(reflect_percentage=0.5),
@@ -404,7 +385,6 @@ lightning_reflect_card = Card(
 poison_cleanse_card = Card(
     name="Poison Cleanse",
     card_type="Defense",
-    cost=1,
     block=0,
     description="Clears poison and heals 5 HP",
     ability=SpecialAbilities.ClearPoisonAndHeal(heal_amount=5),
@@ -414,7 +394,6 @@ poison_cleanse_card = Card(
 stone_armor_card = Card(
     name="Stone Armor",
     card_type="Defense",
-    cost=3,
     block=25,
     description="Reduces incoming damage by 50% for 2 turns",
     ability=SpecialAbilities.ReduceIncomingDamage(duration=2, reduction_percentage=50),
@@ -496,8 +475,6 @@ class Player:
         self.name = name
         self.max_health = max_health
         self.health = max_health
-        self.max_stamina = 10
-        self.stamina = 3
         self.defense = 0
         self.hand = []
         self.status_effects = []
@@ -535,8 +512,6 @@ class Player:
     def play_card(self, game_state, target=None, card_index=0):
         if 0 <= card_index < len(self.hand):
             card = self.hand[card_index]
-            if self.stamina < card.cost:
-                return False, "Not enough stamina!"
             self.history.push({
                 'type': 'play_card',
                 'card': card,
@@ -545,7 +520,6 @@ class Player:
                 'target': target,
                 'player_health': self.health,
                 'target_health': target.health if target else None,
-                'player_stamina': self.stamina,
                 'player_defense': self.defense,
                 'status_effects': [str(e) for e in self.status_effects],
                 'fire_shield': self.fire_shield_active,
@@ -553,16 +527,9 @@ class Player:
                 'lightning_reflect': self.lightning_reflect_active,
                 'damage_reduction': self.damage_reduction_active
             })
-            self.stamina -= card.cost
             card.play(game_state, self, target)
             self.hand.pop(card_index)
             self.hand.append(self.get_random_attack_card())  # Replace with random attack card
-            if self.stamina <= 0:
-                self.take_damage(10, "Physical")  # Depletion damage
-                self.stamina = self.max_stamina
-                self.take_damage(10, "Physical")  # Reset damage
-                print("Exhausted! Took 20 damage total, stamina restored.")
-                return True, "Exhausted! Took 20 damage total, stamina restored."
             return True, f"Played {card.name}!"
         return False, "Invalid card index!"
 
@@ -573,7 +540,6 @@ class Player:
         if last_action['type'] == 'play_card':
             print(f"UNDO: Reverting last card play ({last_action['card'].name})")
             self.hand = last_action['hand_before'][:]  # Restore hand state
-            self.stamina = last_action['player_stamina']
             self.health = last_action['player_health']
             self.defense = last_action['player_defense']
             self.fire_shield_active = last_action['fire_shield']
@@ -631,7 +597,6 @@ class Player:
 
     def begin_turn(self):
         self.can_act = True
-        self.stamina = min(self.stamina + 3, self.max_stamina)
         self.defense = 0
         self.fire_shield_active = False
         self.ice_wall_active = False
@@ -661,7 +626,6 @@ class Player:
         return {
             "name": self.name,
             "health": self.health,
-            "stamina": self.stamina,
             "hand": [card.__dict__ for card in self.hand],
             "skill_tree": self.skill_tree.save_state(),
             "weapon": self.weapon.save_state(),
@@ -672,7 +636,6 @@ class Player:
     def load_state(self, state):
         self.name = state["name"]
         self.health = state["health"]
-        self.stamina = state["stamina"]
         self.hand = [Card(**card_data) for card_data in state["hand"]]
         self.skill_tree.load_state(state["skill_tree"])
         self.weapon.load_state(state["weapon"])
@@ -680,9 +643,9 @@ class Player:
         self.armour.load_state(state["armour"])
 
     def __str__(self):
-        return f"{self.name} | HP: {self.health}/{self.max_health} | Stamina: {self.stamina}/{self.max_stamina}"
+        return f"{self.name} | HP: {self.health}/{self.max_health}"
 
-
+# Boss Attack System
 class BossAttackSystem:
     def __init__(self, boss_type, attack_power=10):
         self.boss_type = boss_type
@@ -713,6 +676,7 @@ class BossAttackSystem:
 
         target.take_damage(damage, "Physical")
         return True, f"{attacker.name} attacked for {damage} damage!"
+
 # AI Player (#5652765)
 class AIPlayer:
     def __init__(self, name="Computer", max_health=100, boss_type=""):
@@ -760,6 +724,7 @@ class AIPlayer:
     def attack(self, target):
         return self.attack_system.attack(self, target)
 
+# Combat System
 class CombatSystem:
     def __init__(self, boss_type, player, game_state, scenes):
         self.boss_type = boss_type
@@ -771,14 +736,12 @@ class CombatSystem:
         self.message = ""
         self.message_timer = 0
         self.player.hand = [self.player.get_random_card() for _ in range(5)]  # Initialize 5 random cards
-        self.player.stamina = self.player.max_stamina
-        self.player.take_damage(10, "Physical")  # Initial stamina reset damage
-        self.message = "Combat begins! Took 10 damage for stamina reset."
+        self.message = "Combat begins!"
         self.message_timer = 60
         self.begin_turn()
 
     def begin_turn(self):
-        print(f"Beginning turn for {self.current_turn}")  # Debug print
+        print(f"Beginning turn for {self.current_turn}")
         if self.current_turn == "player":
             self.player.begin_turn()
         else:
@@ -792,7 +755,7 @@ class CombatSystem:
             if success:
                 self.player.end_turn()
                 if self.enemy.health > 0:
-                    print("Switching to enemy turn")  # Debug print
+                    print("Switching to enemy turn")
                     self.current_turn = "enemy"
                     success, enemy_message = self.enemy.attack(self.player)
                     self.message = f"{message} | {enemy_message}"
@@ -807,7 +770,7 @@ class CombatSystem:
         if self.current_turn == "player":
             self.player.end_turn()
             if self.enemy.health > 0:
-                print("Switching to enemy turn for pass")  # Debug print
+                print("Switching to enemy turn for pass")
                 self.current_turn = "enemy"
                 success, enemy_message = self.enemy.attack(self.player)
                 self.message = f"Player passes, boss attacks! | {enemy_message}"
@@ -820,12 +783,12 @@ class CombatSystem:
         if self.message_timer > 0:
             self.message_timer -= 1
         if self.player.health <= 0:
-            print("Transitioning to defeat screen")  # Debug print
+            print("Transitioning to defeat screen")
             self.game_state.game_mode = "defeat"
             self.game_state.show_skill_tree = False
             self.game_state.combat_system = None
         elif self.enemy.health <= 0:
-            print("Transitioning to victory screen")  # Debug print
+            print("Transitioning to victory screen")
             self.game_state.game_mode = "victory"
             self.game_state.current_scene = "victory"
             self.game_state.initialize_card(self.scenes, disable_down_swipe=True)
@@ -984,7 +947,6 @@ class GameState:
             self.card = SwipeCard(800, 500, scenes[self.current_scene], disable_down_swipe=disable_down_swipe)
 
     def add_choice(self, choice, scenes):
-        # Contributors: Original, #5677995 (skill integration)
         self.choices.append(choice)
         self.decision_count += 1
         if self.decision_count == 1:
@@ -1083,14 +1045,11 @@ def draw_combat_cards(screen, hand, combat_system):
         screen.blit(name_text, (card_x + 10, card_y + 10))
         damage_text = font_body.render(f"DMG: {card.damage}", True, BLACK)
         screen.blit(damage_text, (card_x + 10, card_y + 50))
-        cost_text = font_body.render(f"Cost: {card.cost}", True, BLACK)
-        screen.blit(cost_text, (card_x + 10, card_y + 90))
         if card.block > 0:
             block_text = font_body.render(f"Block: {card.block}", True, BLACK)
-            screen.blit(block_text, (card_x + 10, card_y + 130))
+            screen.blit(block_text, (card_x + 10, card_y + 90))
 
 def create_scenes_file():
-    # Contributors: Original
     if os.path.exists('scenes.json'):
         try:
             with open('scenes.json', 'r') as f:
@@ -1180,9 +1139,7 @@ def create_scenes_file():
         print(f"Error: Failed to create scenes.json: {e}")
     return scenes
 
-
 def main():
-    # Contributors: Original, #5652765, #5665548
     clock = pygame.time.Clock()
     try:
         scenes = create_scenes_file()
@@ -1215,8 +1172,6 @@ def main():
         Button(WIDTH // 2 - 100, HEIGHT // 2 + 20, 200, 60, "Menu", BLUE, GREEN),
         Button(WIDTH // 2 - 100, HEIGHT // 2 + 90, 200, 60, "Quit", BLUE, RED)
     ]
-    for button in outcome_buttons:
-        print(f"Button {button.text} rect: {button.rect}")
     combat_buttons = [
         Button(WIDTH - 150, HEIGHT - 50, 100, 40, "Pass", BLUE, GREEN),
         Button(WIDTH - 300, HEIGHT - 50, 100, 40, "Undo", BLUE, GREEN)
@@ -1231,7 +1186,6 @@ def main():
                 pygame.quit()
                 sys.exit()
 
-            print(f"Event: {event.type}, Game mode: {game_state.game_mode}, Mouse pos: {mouse_pos}")
             if game_state.game_mode in ["victory", "defeat"]:
                 for button in outcome_buttons:
                     if button.is_clicked(mouse_pos, event):
@@ -1346,12 +1300,8 @@ def main():
             draw_health_bars(screen, combat_system.player.health, combat_system.enemy.health,
                              combat_system.enemy.max_health, combat_system)
             draw_combat_cards(screen, combat_system.player.hand, combat_system)
-            stamina_text = font_body.render(
-                f"Stamina: {combat_system.player.stamina}/{combat_system.player.max_stamina}", True, WHITE)
-            stamina_rect = stamina_text.get_rect(topleft=(50, HEIGHT - 50))
-            screen.blit(stamina_text, stamina_rect)
             block_text = font_body.render(f"Block: {combat_system.player.defense}", True, WHITE)
-            block_rect = block_text.get_rect(topleft=(50, HEIGHT - 80))
+            block_rect = block_text.get_rect(topleft=(50, HEIGHT - 50))
             screen.blit(block_text, block_rect)
             for button in combat_buttons:
                 button.draw(screen)
